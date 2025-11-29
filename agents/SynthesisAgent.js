@@ -9,56 +9,108 @@ class SynthesisAgent {
     const { targetRecord, discovery, websiteContent, newsData, linkedInData } = knowledgeBase;
 
     const analysisPrompt = `
-      You are a VC Analyst. Analyze the collected data to build a comprehensive profile for "${targetRecord.Name}".
+You are an expert VC Research Analyst analyzing comprehensive data about "${targetRecord.Name}" (SEBI Reg: ${targetRecord['Registration No.']}).
 
-      SOURCES:
-      1. **Official Record**: ${JSON.stringify(targetRecord)}
-      2. **Discovery**: ${JSON.stringify(discovery)}
-      3. **News Intelligence**: ${JSON.stringify(newsData)}
-      4. **GP Profiles**: ${JSON.stringify(linkedInData.map(p => ({ name: p.name, bio: p.about || p.summary })))}
-      5. **Website Context**: ${websiteContent.substring(0, 15000)} (Truncated)
+CONTEXT:
+- Contact Person: ${targetRecord['Contact Person']}
+- This is an Indian VC firm registered with SEBI
+- You have access to multiple data sources: official website, news articles, team pages, portfolio information
 
-      INSTRUCTIONS:
-      - Analyze all sources to extract the 16 required data points.
-      - Use News Data for "Fund Size", "Recent Activity", "Cheque Size".
-      - Use GP Profiles for "GP Background".
-      - Draft the values for the final report.
+DATA SOURCES:
+1. **Official Record**: ${JSON.stringify(targetRecord)}
+2. **Discovery URLs**: ${JSON.stringify(discovery)}
+3. **News Intelligence**: ${JSON.stringify(newsData)}
+4. **GP LinkedIn Profiles**: ${JSON.stringify(linkedInData.map(p => ({ name: p.name, bio: p.about || p.summary })))}
+5. **Website Content** (${websiteContent.length} chars): ${websiteContent.substring(0, 40000)}
+
+YOUR TASK - Extract the following 16 data points:
+
+1. **FIRM NAME**: Official legal name and any common abbreviations
+2. **FUND NAMES**: All fund names/vehicles (e.g., "Fund I", "Fund II", "Growth Trust")
+3. **FUND SIZES**: AUM for each fund in USD/INR with vintage year
+4. **GPS (General Partners)**: Full names of founding and managing partners
+5. **GP BACKGROUNDS**: Educational and professional background of key GPs (2-3 sentences per GP)
+6. **TEAM SIZE**: Total number of team members (investment team + support)
+7. **RECENT FUNDING ACTIVITY**: Deals from 2020-2025 with company names, amounts, dates
+8. **FUND START DATE**: When each fund was raised/closed
+9. **FIRM START DATE**: Year the firm was founded/established
+10. **PORTFOLIO COMPANIES**: All current and exited portfolio companies
+11. **PAST PERFORMANCE**: IRR, multiples, successful exits (IPOs, acquisitions)
+12. **INDUSTRY FOCUS**: Primary sectors/industries they invest in
+13. **DEAL VELOCITY**: Average number of deals per year
+14. **AVG CHEQUE SIZE**: Typical investment amount per deal
+15. **CHEQUE SIZE % OF ROUND**: What % of funding round they typically take
+16. **PRIMARY CO-INVESTORS**: Other VCs/investors they frequently co-invest with
+
+EXTRACTION GUIDELINES:
+
+**For Fund Sizes:**
+- Look for phrases like "Fund III closed at $350M", "raised ₹2000 crore", "AUM of $600M"
+- Match fund names with their sizes
+- Note the vintage year (year of closing)
+
+**For GP Backgrounds:**
+- Find education (IIM, IIT, Harvard, etc.)
+- Previous work experience (McKinsey, Goldman Sachs, etc.)
+- Years of VC experience
+- Notable achievements
+
+**For Recent Activity:**
+- Focus on deals from 2020-2025
+- Extract: company name, sector, amount, date, series (A/B/C)
+- Look for phrases like "invested in", "led $XM round", "participated in"
+
+**For Portfolio:**
+- Current active investments
+- Successful exits (IPOs, acquisitions)
+- Failed/written-off companies
+- Sector classification
+
+**For Industry Focus:**
+- Primary sectors (Healthcare, Technology, Consumer, etc.)
+- Sub-sectors (Fintech, SaaS, D2C, etc.)
+- Geographic focus (India, US, Southeast Asia)
+
+**For Co-investors:**
+- Look for "co-invested with", "alongside", "syndicate with"
+- Recurring names in deal announcements
+
+ANALYSIS APPROACH:
+1. Read through all content systematically
+2. Cross-reference information from multiple sources
+3. Prefer recent data over old data
+4. Use official sources (website, SEBI) over news articles
+5. Extract exact numbers, dates, and names
+6. Note confidence level for each data point
+
+Begin your analysis now. Be thorough and precise.
     `;
 
     console.log("   🧠 Analyzing all data sources...");
     const analysisText = await this.gemini.generateContent(analysisPrompt);
 
     const extractionPrompt = `
-      Based on the analysis below, create the final JSON report.
+You are creating a final structured JSON report for "${targetRecord.Name}" based on detailed analysis.
 
-      ANALYSIS:
-      ${analysisText.substring(0, 5000)}
+ANALYSIS RESULTS:
+${analysisText.substring(0, 8000)}
 
-      INSTRUCTIONS:
-      - Return **ONLY** valid, minified JSON.
-      - **NO DISCLAIMERS**.
-      - If a value is not found, use "Not available".
-      - **CRITICAL**: Do not repeat text. Keep fields concise.
+ORIGINAL DATA CONTEXT:
+- Website Content Length: ${websiteContent.length} chars
+- Number of News Sources: ${JSON.stringify(newsData).length > 50 ? 'Multiple' : 'Few'}
+- LinkedIn Profiles: ${linkedInData.length}
 
-      JSON STRUCTURE:
-      {
-        "firm_name": "Name",
-        "fund_names": ["Fund I", "Fund II"],
-        "fund_sizes": ["$X M", "$Y M"],
-        "gps": ["Name 1", "Name 2"],
-        "gp_backgrounds": "Summary of key partners' background",
-        "team_size": "Number or 'Not available'",
-        "recent_funding_activity": "Summary of deals",
-        "fund_start_date": "Year",
-        "firm_start_date": "Year",
-        "portfolio_companies": ["Company A", "Company B"],
-        "past_performance": "IRR/Multiples or 'Not available'",
-        "industry_focus": "Sectors",
-        "deal_velocity": "Deals/year",
-        "avg_cheque_size": "Amount",
-        "cheque_size_pct_round": "%",
-        "primary_coinvestors": ["Investor A", "Investor B"]
-      }
+EXTRACTION INSTRUCTIONS:
+
+**CRITICAL RULES:**
+1. Extract data ONLY from the analysis above - do NOT make up information
+2. If a data point is not found, use "Not available" or empty array []
+3. Use exact quotes for numbers (e.g., "$350M", "₹2000 crore")
+4. Include years/dates wherever available
+5. Keep arrays for multiple items (funds, GPs, portfolio companies)
+6. For GP backgrounds: synthesize into 2-3 concise sentences highlighting education and key experience
+7. For recent activity: focus on last 3-5 years (2020-2025)
+
     `;
 
     const schema = {
