@@ -82,47 +82,8 @@ class DiscoveryAgent {
     // Disable tools for extraction to prevent hallucinations
     const result = await this.gemini.generateStructuredOutput(extractionPrompt, schema, null, []);
     
-    // Clean malformed URLs (Gemini sometimes returns Google search result URLs)
-    if (result.website) {
-      result.website = this.cleanUrl(result.website);
-    }
-    if (result.linkedin_company_url) {
-      result.linkedin_company_url = this.cleanUrl(result.linkedin_company_url);
-    }
-    if (result.crunchbase_url) {
-      result.crunchbase_url = this.cleanUrl(result.crunchbase_url);
-    }
-    
     console.log(`   ✅ Found: Web: ${result.website}, LinkedIn: ${result.linkedin_company_url}`);
     return result;
-  }
-
-  cleanUrl(url) {
-    if (!url || url === 'null') return null;
-
-    // If URL contains !!!, split and take the last part (the actual URL)
-    if (url.includes('!!!')) {
-      const parts = url.split('!!!');
-      url = parts[parts.length - 1];
-    }
-
-    // If it's a Google search result URL, try to extract the actual domain
-    if (url.includes('google.com') || url.includes('vertexaisearch')) {
-      // Look for common patterns like http://www.example.com or https://example.com
-      const match = url.match(/https?:\/\/(?!.*google\.com)[\w\-\.]+\.(?:com|in|org|net|vc|io)[\/]?/);
-      if (match) {
-        return match[0].replace(/\/$/, ''); // Remove trailing slash
-      }
-      return null; // Couldn't extract a clean URL
-    }
-
-    // Ensure the URL has a protocol
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      url = 'https://' + url;
-    }
-
-    // Remove trailing slash
-    return url.replace(/\/$/, '');
   }
 }
 

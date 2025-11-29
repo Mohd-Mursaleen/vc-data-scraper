@@ -14,11 +14,18 @@ class LinkedInAgent {
       console.log(`   🔎 Processing: ${name}`);
       
       // 1. Find Profile URL via Google
-      const searchPrompt = `Find the LinkedIn profile URL for "${name}" who works at "${firmName}". Return ONLY the URL.`;
-      const searchResult = await this.gemini.generateContent(searchPrompt);
-      // Extract URL from text (simple regex)
-      const urlMatch = searchResult.match(/https:\/\/www\.linkedin\.com\/in\/[\w-]+/);
-      const profileUrl = urlMatch ? urlMatch[0] : null;
+      // 1. Find Profile URL via Google
+      const searchPrompt = `Find the LinkedIn profile URL for "${name}" who works at "${firmName}".`;
+      
+      const urlSchema = {
+        type: "object",
+        properties: {
+          linkedin_url: { type: "string", nullable: true }
+        }
+      };
+
+      const searchResult = await this.gemini.generateStructuredOutput(searchPrompt, urlSchema, null, []);
+      const profileUrl = searchResult.linkedin_url;
 
       if (!profileUrl) {
         console.log(`   ❌ Could not find LinkedIn URL for ${name}`);
@@ -42,16 +49,28 @@ class LinkedInAgent {
         console.log(`   ⚠️  Apify failed (${e.message}). Switching to Google Fallback...`);
         
         // 3. Fallback: Google Search for Bio
+        // 3. Fallback: Google Search for Bio
         const bioPrompt = `
           Search for the professional background/bio of "${name}" from "${firmName}".
           Focus on: Previous roles, Education, Investment focus.
         `;
-        const bioText = await this.gemini.generateContent(bioPrompt);
+        
+        const bioSchema = {
+            type: "object",
+            properties: {
+                about: { type: "string" },
+                experience: { type: "array", items: { type: "string" } },
+                education: { type: "array", items: { type: "string" } }
+            }
+        };
+
+        const bioResult = await this.gemini.generateStructuredOutput(bioPrompt, bioSchema, null, []);
+        
         profileData = {
           name: name,
-          about: bioText,
-          experience: [], // Can't get structured exp from google easily without more work
-          education: [],
+          about: bioResult.about,
+          experience: bioResult.experience,
+          education: bioResult.education,
           url: profileUrl,
           source: "google_fallback"
         };
