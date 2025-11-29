@@ -8,9 +8,9 @@ class DiscoveryAgent {
 
     // Expanded Query Set for Maximum Coverage
     const queries = [
-      `Official website for Indian VC firm "${targetRecord.Name}" (SEBI Registration: ${targetRecord['Registration No.']})`,
-      `LinkedIn page for Indian VC firm "${targetRecord.Name}" (Registration: ${targetRecord['Registration No.']})`,
-      `Pitchbook profile for Indian VC firm "${targetRecord.Name}"`
+      `Official website for Indian VC firm "${targetRecord.Name}" (Contact: ${targetRecord['Contact Person']}, SEBI Registration: ${targetRecord['Registration No.']})`,
+      `LinkedIn page for Indian VC firm "${targetRecord.Name}" (Contact: ${targetRecord['Contact Person']})`,
+      `Pitchbook profile for Indian VC firm "${targetRecord.Name}" (Contact: ${targetRecord['Contact Person']})`
     ];
 
     console.log(`   🔎 Running ${queries.length} parallel searches...`);

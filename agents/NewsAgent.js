@@ -10,14 +10,14 @@ class NewsAgent {
     console.log("\n📰 [News Agent] Gathering Enhanced Deal Intelligence...");
 
     const queries = [
-      `List recent investment news URLs for Indian VC firm "${firmName}" (Reg: ${regNo})`,
+      `List recent investment news URLs for Indian VC firm "${firmName}" (Contact: ${contactPerson})`,
       `Find fund size announcements for Indian VC firm "${firmName}" (Reg: ${regNo}) with source URLs`,
-      `New fund launch news for Indian VC firm "${firmName}" with links`,
-      `Portfolio companies list for Indian VC firm "${firmName}" with source links`,
-      `Partner interviews for Indian VC firm "${firmName}" with URLs`,
-      `Latest deals 2024 2025 for Indian VC firm "${firmName}" with article links`,
-      `TechCrunch articles about Indian VC firm "${firmName}" with URLs`,
-      `Economic Times startup news for Indian VC firm "${firmName}" with links`
+      `New fund launch news for Indian VC firm "${firmName}" partner "${contactPerson}" with links`,
+      `Portfolio companies list for Indian VC firm "${firmName}" partner "${contactPerson}" with source links`,
+      `Partner interviews for Indian VC firm "${firmName}" partner "${contactPerson}" with URLs`,
+      `Latest deals 2024 2025 for Indian VC firm "${firmName}"  partner "${contactPerson}" with article links`,
+      `TechCrunch articles about Indian VC firm "${firmName}"  partner "${contactPerson}" with URLs`,
+      `Economic Times startup news for Indian VC firm "${firmName}"  partner "${contactPerson}" with links`
     ];
 
     console.log(`   🔎 Searching News with ${queries.length} queries...`);
