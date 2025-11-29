@@ -10,7 +10,7 @@ class GeminiService {
 
     this.genAI = new GoogleGenerativeAI(this.apiKey);
     this.model = this.genAI.getGenerativeModel({
-      model: "gemini-2.0-flash",
+      model: "gemini-2.5-flash-preview-09-2025",
     });
 
     // Configure Google Search grounding tool for Gemini 2.0

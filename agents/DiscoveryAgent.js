@@ -4,85 +4,76 @@ class DiscoveryAgent {
   }
 
   async execute(targetRecord) {
-    console.log("\n🕵️  [Discovery Agent] Starting...");
+    console.log("\n🕵️  [Discovery Agent] Starting Enhanced Discovery...");
 
-    // Parallel Searches for better coverage
+    // Expanded Query Set for Maximum Coverage
     const queries = [
-      `"${targetRecord.Name}" venture capital official website`,
-      `"${targetRecord.Name}" VC firm LinkedIn`,
-      `"${targetRecord.Name}" Crunchbase`
+      `Official website for Indian VC firm "${targetRecord.Name}" (SEBI Registration: ${targetRecord['Registration No.']})`,
+      `LinkedIn page for Indian VC firm "${targetRecord.Name}" (Registration: ${targetRecord['Registration No.']})`,
+      `Pitchbook profile for Indian VC firm "${targetRecord.Name}"`
     ];
 
-    console.log("   🔎 Running parallel searches...");
+    console.log(`   🔎 Running ${queries.length} parallel searches...`);
+    queries.forEach(q => console.log(`      👉 Query: ${q}`));
+    
     const searchResults = await Promise.all(queries.map(q => this.gemini.generateContent(q)));
     const combinedContext = searchResults.join("\n\n=== NEXT SEARCH RESULT ===\n\n");
 
     // Sanitize
     const sanitizedContext = combinedContext.replace(/[^\x20-\x7E\n\r\t]/g, '');
     console.log(`   📝 Search Context Length: ${sanitizedContext.length}`);
-    console.log(`   📝 Context Preview: ${sanitizedContext.substring(0, 500)}...`);
 
     const analysisPrompt = `
       Analyze the following search results for the VC firm "${targetRecord.Name}" 
       (Contact: ${targetRecord['Contact Person']}).
 
+      GOAL: We are building a comprehensive database of this VC fund. We need to gather:
+      - Fund sizes and names (e.g., Fund I, Fund II)
+      - Investment focus and sectors
+      - Key people (GPs, Partners) and their backgrounds
+      - Portfolio companies and recent deals
+      - Contact information
+
       SEARCH CONTEXT:
-      ${sanitizedContext.substring(0, 20000)}
+      ${sanitizedContext.substring(0, 30000)}
 
       INSTRUCTIONS:
-      1. Identify the OFFICIAL website URL (prioritize .com, .in, .vc domains).
-      2. Identify the OFFICIAL LinkedIn Company Page.
-      3. Identify the Crunchbase profile (if any).
-      4. Extract names of key people (GPs, Partners) mentioned.
-    `;
-
-    console.log("   🧠 Analyzing search results...");
-    const analysisText = await this.gemini.generateContent(analysisPrompt);
-
-    const extractionPrompt = `
-      Based on the analysis below, extract the URLs and names into JSON.
-
-      ANALYSIS:
-      ${analysisText.substring(0, 5000)}
-
-      INSTRUCTIONS:
-      - Return **ONLY** valid, minified JSON.
-      - Extract the actual DOMAIN URLs only (e.g., "https://www.ascentcapital.com")
-      - **DO NOT** return Google search result URLs or any URLs containing "google.com" or "vertexai"
-      - **CRITICAL**: Return clean URLs like "https://example.com", NOT search engine URLs
-      - If multiple URLs found, pick the most official one (usually the .com or .in domain)
-      - If no valid URL found, return null
-
-      EXAMPLES:
-      ✅ CORRECT: "https://www.ascentcapital.com"
-      ✅ CORRECT: "https://ascentcapital.in"  
-      ❌ WRONG: "https://vertexaisearch.cloud.google.com/..."
-      ❌ WRONG: "https://www.google.com/search?q=..."
-
-      JSON STRUCTURE:
-      {
-        "website": "https://www.example.com",
-        "linkedin_company_url": "https://www.linkedin.com/company/example",
-        "crunchbase_url": "https://www.crunchbase.com/organization/example",
-        "key_people": ["Name 1", "Name 2"]
-      }
+      1. Identify ALL relevant URLs that might contain the above data.
+      2. Prioritize the Official Website, LinkedIn, and Pitchbook.
+      3. Look for "Team" pages, "Portfolio" pages, and "About" pages.
+      4. For each URL, provide a brief context (e.g., "Official Website - contains team info", "LinkedIn Page - has employee list").
+      5. Assign an importance score (1-100) based on relevance for extracting firm data.
+         - Official Website: 90-100
+         - LinkedIn: 80-90
+         - Pitchbook: 70-80
+         - News Articles/Profiles: 60-80
+         - Irrelevant/Spam: 0-10
     `;
 
     const schema = {
       type: "object",
       properties: {
-        website: { type: "string", nullable: true },
-        linkedin_company_url: { type: "string", nullable: true },
-        crunchbase_url: { type: "string", nullable: true },
-        key_people: { type: "array", items: { type: "string" } }
-      }
+        urls: {
+          type: "array",
+          description: "An array of URL discovery objects containing url, context, and importance.",
+          items: {
+            type: "object",
+            properties: {
+              url: { type: "string", description: "The discovered URL" },
+              context: { type: "string", description: "Description of what this URL represents" },
+              importance: { type: "integer", minimum: 1, maximum: 100, description: "Relevance score (1-100)" }
+            },
+            required: ["url", "context", "importance"]
+          }
+        }
+      },
+      required: ["urls"]
     };
 
-    console.log("   📝 Generating Discovery JSON...");
-    // Disable tools for extraction to prevent hallucinations
-    const result = await this.gemini.generateStructuredOutput(extractionPrompt, schema, null, []);
+    console.log("   🧠 Analyzing and extracting URLs...");
+    const result = await this.gemini.generateStructuredOutput(analysisPrompt, schema, null, []);
     
-    console.log(`   ✅ Found: Web: ${result.website}, LinkedIn: ${result.linkedin_company_url}`);
+    console.log(`   ✅ Discovered ${result.urls.length} URLs.`);
     return result;
   }
 }

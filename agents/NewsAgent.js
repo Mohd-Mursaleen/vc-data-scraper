@@ -3,17 +3,26 @@ class NewsAgent {
     this.gemini = geminiService;
   }
 
-  async execute(firmName) {
-    console.log("\n📰 [News Agent] Gathering Deal Intelligence...");
+  async execute(targetRecord) {
+    const firmName = targetRecord.Name;
+    const contactPerson = targetRecord['Contact Person'];
+    const regNo = targetRecord['Registration No.'];
+    console.log("\n📰 [News Agent] Gathering Enhanced Deal Intelligence...");
 
     const queries = [
-      `"${firmName}" investment "Series A" OR "Series B"`,
-      `"${firmName}" fund size announcement`,
-      `"${firmName}" new fund launch`,
-      `"${firmName}" portfolio companies list`
+      `List recent investment news URLs for Indian VC firm "${firmName}" (Reg: ${regNo})`,
+      `Find fund size announcements for Indian VC firm "${firmName}" (Reg: ${regNo}) with source URLs`,
+      `New fund launch news for Indian VC firm "${firmName}" with links`,
+      `Portfolio companies list for Indian VC firm "${firmName}" with source links`,
+      `Partner interviews for Indian VC firm "${firmName}" with URLs`,
+      `Latest deals 2024 2025 for Indian VC firm "${firmName}" with article links`,
+      `TechCrunch articles about Indian VC firm "${firmName}" with URLs`,
+      `Economic Times startup news for Indian VC firm "${firmName}" with links`
     ];
 
-    console.log("   🔎 Searching News...");
+    console.log(`   🔎 Searching News with ${queries.length} queries...`);
+    queries.forEach(q => console.log(`      👉 Query: ${q}`));
+
     const searchResults = await Promise.all(queries.map(q => this.gemini.generateContent(q)));
     const combinedContext = searchResults.join("\n\n=== NEXT SEARCH RESULT ===\n\n");
     
@@ -24,54 +33,43 @@ class NewsAgent {
       Analyze the following news search results for the VC firm "${firmName}".
       
       SEARCH CONTEXT:
-      ${sanitizedContext.substring(0, 20000)}
+      ${sanitizedContext.substring(0, 30000)}
 
       INSTRUCTIONS:
-      Extract the following financial details. Be specific with numbers.
-      
-      1. Fund Names & Sizes (e.g. "Fund I: $50M", "Opportunity Fund: $100M")
-      2. Recent Deal Activity (last 24 months)
-      3. Average Cheque Size (if mentioned)
-      4. Key Portfolio Companies mentioned in news
-    `;
-
-    console.log("   🧠 Analyzing news data...");
-    const analysisText = await this.gemini.generateContent(analysisPrompt);
-
-    const extractionPrompt = `
-      Based on the analysis below, extract the financial details into JSON.
-
-      ANALYSIS:
-      ${analysisText.substring(0, 5000)}
-
-      INSTRUCTIONS:
-      - Return **ONLY** valid, minified JSON.
-      - If a value is not found, use "Not available".
-      - **CRITICAL**: Keep summaries concise (max 100 words). Do not repeat text.
-
-      JSON STRUCTURE:
-      {
-        "fund_details": ["Fund I: $50M", "Fund II: $100M"],
-        "recent_activity": "Summary of recent deals...",
-        "avg_cheque": "$X Million or 'Not available'",
-        "portfolio_mentions": ["Company A", "Company B"]
-      }
+      1. Identify ALL URLs that contain valuable data about this firm (Fund sizes, Deals, Portfolio).
+      2. Look for news articles, press releases, blog posts, and database entries.
+      3. For each URL, provide a brief context (e.g., "TechCrunch Article on Fund II", "Portfolio Page").
+      4. Assign an importance score (1-100) based on data richness.
+         - Fund Launch/Size Announcements: 90-100
+         - Deal Announcements: 80-90
+         - General Mentions: 50-70
+         - Irrelevant: 0-10
     `;
 
     const schema = {
       type: "object",
       properties: {
-        fund_details: { type: "array", items: { type: "string" } },
-        recent_activity: { type: "string" },
-        avg_cheque: { type: "string" },
-        portfolio_mentions: { type: "array", items: { type: "string" } }
-      }
+        urls: {
+          type: "array",
+          description: "An array of URL discovery objects containing url, context, and importance.",
+          items: {
+            type: "object",
+            properties: {
+              url: { type: "string", description: "The discovered URL" },
+              context: { type: "string", description: "Description of what this URL represents" },
+              importance: { type: "integer", minimum: 1, maximum: 100, description: "Relevance score (1-100)" }
+            },
+            required: ["url", "context", "importance"]
+          }
+        }
+      },
+      required: ["urls"]
     };
 
-    console.log("   📝 Generating News JSON...");
-    const result = await this.gemini.generateStructuredOutput(extractionPrompt, schema, null, []);
+    console.log("   📝 Generating News URL List...");
+    const result = await this.gemini.generateStructuredOutput(analysisPrompt, schema, null, []);
     
-    console.log(`   ✅ News Insights: ${result.fund_details.length} funds found.`);
+    console.log(`   ✅ News Insights: ${result.urls.length} relevant URLs found.`);
     return result;
   }
 }

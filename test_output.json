@@ -1,0 +1,110 @@
+{
+  "discovery": {
+    "urls": [
+      {
+        "url": "www.ascentcapital.in",
+        "context": "Official Website Homepage. Primary entry point for extracting information on investment focus, funds, key people, and portfolio.",
+        "importance": 100
+      },
+      {
+        "url": "www.ascentcapital.in/team",
+        "context": "Inferred Team/People page of the official website. Crucial for gathering detailed biographies and backgrounds of key professionals (Raja Kumar, A P Vasanthakumar, etc.).",
+        "importance": 95
+      },
+      {
+        "url": "www.ascentcapital.in/portfolio",
+        "context": "Inferred Portfolio/Investments page. Essential for confirming and detailing portfolio companies (ACKO, FreshToHome, Cult.fit) and recent deals.",
+        "importance": 90
+      },
+      {
+        "url": "https://www.linkedin.com/company/ascent-capital/",
+        "context": "Official LinkedIn Company Page. Useful for verifying employee listings, firm structure, leadership (Raja Kumar), and recent activities/updates.",
+        "importance": 85
+      },
+      {
+        "url": "www.ascentcapital.in/funds",
+        "context": "Inferred Funds page. Critical for finding specific details, sizes, and vintage years for Ascent India Funds II, III, IV, and V.",
+        "importance": 80
+      },
+      {
+        "url": "www.ascentcapital.in/contact",
+        "context": "Inferred Contact page. Necessary for finding official contact information for the firm, including phone numbers or specific personnel emails (like Manjunath Kallapur).",
+        "importance": 80
+      },
+      {
+        "url": "https://pitchbook.com/profiles/investor/Ascent-Capital",
+        "context": "PitchBook Investor Profile (derived URL structure). Source of aggregated financial data, fund details, investment focus confirmation, and historical metrics.",
+        "importance": 75
+      }
+    ]
+  },
+  "news": {
+    "urls": [
+      {
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQG7mXh5mVccxKs4jC-OIhLAs8OV95HHa23lag37mfvJ442rIbno1rHpOavF437dJM_AmsK9hTxRmZUIQxzoXe2rgY7iVzhjThLHrTTbmHrRygDH4sV-_bsn2209yT5E2ttqa9gD2v2UK3VnN22SU10t",
+        "context": "VCCircle link covering recent exits (April 2025 and October 2024) from legacy and decade-old portfolio companies.",
+        "importance": 85
+      },
+      {
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHnlRHfZAbqF7QdNn9QSYUwIvHPTr-Ow6xCFwpRsJnHczVUfqnwDh-WgPGMbfZhE8tGNRHmv8UywTf4m9VaacJJ_hAivS6cZ5CRpR29Djh7KHCV4HDNUAkXYDVyTMDtM06FY1QE5KMGl5-EByyppY2YR52ttt-bdNcV76XokTQyR2_z_tc=",
+        "context": "VCCircle article confirming Ascent Capital onboarded a new LP for its new $240 million fund (October 2024).",
+        "importance": 95
+      },
+      {
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHT9X8WtGcMQpr8y-RSXJ6JmBmv2eKpQYuoYimiUw5HZgHiM8tCqA8AS0ji0ON-ESHabkCwypnAUkMMh4jnzgGGVtcN0gGky5ZvkzoG3rLxGFyXABtnXzMCfDl86mxq5_UFUgvzQslJepUmmlKzYClgjJfOmUBiWxfyQOBbir3NWiDH17VysX1J7aGGx9JSl_niOXnMBZ7bWYUzvQ==",
+        "context": "Tracxn profile listing the Daya General Hospital $17M Series B investment as Ascent's most recent deal (September 2025).",
+        "importance": 88
+      },
+      {
+        "url": "https://www.business-standard.com/article/companies/q-a-raja-kumar-ceo-ascent-capital-110081100062_1.html",
+        "context": "Business Standard Q&A interview with Raja Kumar, Founder and CEO of Ascent Capital, providing historical context and strategy.",
+        "importance": 75
+      },
+      {
+        "url": "https://www.ventureintelligence.com/blog/interview-with-raja-kumar-of-ascent-capital/",
+        "context": "Venture Intelligence interview with Raja Kumar, offering insights into firm management and history.",
+        "importance": 75
+      },
+      {
+        "url": "https://www.financialit.net/news/payments/enkash-corporate-spends-management-and-cards-issuing-startup-raises-us-20-million",
+        "context": "Financial IT news on the $20 million EnKash funding round, including a statement from Partner Subhasis Majumder.",
+        "importance": 88
+      },
+      {
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGQkfIAjtUp-qy5FUmVlmzeSgd9vNr2rK4dgs2_mgim08fdZnQ1i0NFxyKxEZmRJIYWdZdvxj2HrkUugb-zc_k1Ws7JmIn-n4akYNTBFf8wZO2WRj2xD6guMvaowDVSmIGWNr4q2VLCVdq8A-s136QXr2LcvMrhFcPwEPO_OnyWR2pfYPHBXEVGbdUrfHEUllFc2fWWCk7N_xi8rCpybtx2qw=",
+        "context": "Article detailing Daya General Hospital securing 150 crore (~$17M) institutional equity from Ascent Capital (Sept 2025 investment deal).",
+        "importance": 90
+      },
+      {
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFjyebpw9PttSgVEIcWxmptzBLwHzxLmXzqF0BPAb5Guv-190Eg8-sMTt1FAV-VsXM4nm-s9QKKqO5pF817zOw0I7Ppbb_XDAzGdTM6Ei2ztJ_wY96_4Kd_z_Ov3s1sJBofMU30mhJi2vqtXhHYJc8PW8iibPkbvwitZHXu1Ysehx_d3Rq99Z7MAdGaO2u3cu081g=",
+        "context": "Additional coverage on Daya Group securing PE funding from Ascent Capital for hospital network expansion.",
+        "importance": 85
+      },
+      {
+        "url": "https://techcrunch.com/2021/11/09/amazon-backed-d2c-beauty-brand-myglamm-becomes-unicorn-with-150-million-funding/",
+        "context": "TechCrunch article confirming Ascent Capital was an investor in MyGlamm's $150 million unicorn funding round.",
+        "importance": 80
+      },
+      {
+        "url": "https://techcrunch.com/2020/10/27/freshtohome-raises-121-million-as-it-expands-in-india-and-middle-east/",
+        "context": "TechCrunch article confirming Ascent Capital's participation in FreshToHome's $121 million funding round.",
+        "importance": 85
+      },
+      {
+        "url": "https://techcrunch.com/2016/03/22/bigbasket-closes-150m-round-led-by-abraaj-to-grow-its-grocery-delivery-service-in-india/",
+        "context": "TechCrunch article confirming Ascent Capital's participation in BigBasket's $150 million funding round.",
+        "importance": 85
+      },
+      {
+        "url": "https://economictimes.indiatimes.com/tech/funding/b2b-fintech-enkash-raises-20-million-funding-led-by-ascent-capital/articleshow/90647898.cms?from=mdr",
+        "context": "Economic Times article detailing Ascent Capital leading the $20 million funding round for B2B fintech EnKash (April 2022).",
+        "importance": 90
+      },
+      {
+        "url": "https://economictimes.indiatimes.com/small-biz/startups/private-equity-firm-ascent-capital-scouts-for-400-mn-for-next-fund/articleshow/57930863.cms?from=mdr",
+        "context": "Economic Times article detailing Ascent Capital's 2017 target to raise a $400M fund and summarizing successful exits (KIMS, RBL Bank, Citrus Pay).",
+        "importance": 98
+      }
+    ]
+  }
+}
