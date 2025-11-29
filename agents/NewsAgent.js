@@ -29,21 +29,82 @@ class NewsAgent {
     // Sanitize
     const sanitizedContext = combinedContext.replace(/[^\x20-\x7E\n\r\t]/g, '');
 
-    const analysisPrompt = `
-      Analyze the following news search results for the VC firm "${firmName}".
+    // Step 1: Use Google Search to find additional news URLs beyond initial context
+    console.log("   🔍 Step 1: Searching for additional news URLs with Google Search...");
+    const additionalSearchPrompt = `
+      Find ALL news articles, press releases, and database entries for the Indian VC firm "${firmName}" (Contact: ${contactPerson}, SEBI Reg: ${regNo}).
       
-      SEARCH CONTEXT:
-      ${sanitizedContext.substring(0, 30000)}
+      Look for:
+      - Fund announcements (closings, sizes, launches) from 2015-2025
+      - Deal announcements (investments, exits) from 2015-2025
+      - Partner interviews and strategy articles
+      - Database profiles (VCCircle, Tracxn, PitchBook, Entrackr)
+      - Portfolio company funding rounds where this firm participated
+      
+      Return the complete list of URLs with what data each contains.
+    `;
+    
+    const additionalSearchResult = await this.gemini.generateContent(additionalSearchPrompt);
+    console.log(`   📝 Additional Search Result Length: ${additionalSearchResult.length}`);
 
-      INSTRUCTIONS:
-      1. Identify ALL URLs that contain valuable data about this firm (Fund sizes, Deals, Portfolio).
-      2. Look for news articles, press releases, blog posts, and database entries.
-      3. For each URL, provide a brief context (e.g., "TechCrunch Article on Fund II", "Portfolio Page").
-      4. Assign an importance score (1-100) based on data richness.
-         - Fund Launch/Size Announcements: 90-100
-         - Deal Announcements: 80-90
-         - General Mentions: 50-70
+    // Combine all context
+    const fullContext = sanitizedContext + "\n\n=== ADDITIONAL SEARCH ===\n\n" + additionalSearchResult;
+
+    // Step 2: Structured extraction WITHOUT tools
+    console.log("   🧠 Step 2: Extracting and structuring news URLs...");
+    const analysisPrompt = `
+      You are a VC data analyst extracting news URLs for the Indian VC firm "${firmName}"
+      (Contact: ${contactPerson}, SEBI Reg: ${regNo}).
+
+      GOAL: Find ALL news articles, press releases, and database entries containing valuable data about this firm.
+
+      SEARCH CONTEXT (from initial search and additional search):
+      ${fullContext.substring(0, 40000)}
+
+      CRITICAL INSTRUCTIONS:
+      1. **Discover comprehensive news coverage** - both recent AND historical:
+        - Fund announcements (closings, sizes, new fund launches): 2015-2025
+         - Deal announcements (investments, exits): 2015-2025
+         - Portfolio company funding rounds where this firm participated
+         - Partner/GP interviews (insights on strategy, focus, performance)
+         - Database profiles (VCCircle, Tracxn, PitchBook, Entrackr)
+         - Press releases from the firm or portfolio companies
+         - Award/recognition articles
+      
+      2. **Prioritize CLEAN, DIRECT URLs**:
+         - Use actual article URLs (e.g., "https://www.vccircle.com/ascent-capital-closes-350m-fund")
+         - Extract real URLs from redirect links when possible
+         - For database sites, use the profile URL (e.g., "https://tracxn.com/d/companies/ascent-capital")
+      
+      3. **Look for SPECIFIC data points**:
+         - Fund III: $350M closing (verify year)
+         - Fund IV: $240M target/closing
+         - Recent deals: Daya General Hospital ($17M, 2025), EnKash ($20M), etc.
+         - Historical deals: BigBasket, FreshToHome, MyGlamm, KIMS, RBL Bank
+         - Partner quotes and strategy insights
+      
+      4. **Provide detailed context** for each URL:
+         - What specific information it contains (fund size, deal amount, partner name)
+         - Date/year if available
+         - Why it's valuable (e.g., "Confirms $350M Fund III final close in 2018")
+      
+      5. **Assign importance scores (1-100)**:
+         - Fund announcements (closings, sizes): 90-100
+         - Major deal announcements (>$10M): 85-95
+         - Partner interviews/strategy articles: 70-80
+         - Database profiles: 70-85
+         - Portfolio company news (with firm mentioned): 75-85
+         - Small deal mentions: 60-75
+         - Historical deals (pre-2015): 55-70
+         - General/vague mentions: 40-60
          - Irrelevant: 0-10
+      
+      6. **Be comprehensive**: Include 15-20 high-quality URLs covering:
+         - At least 2-3 fund announcements
+         - At least 5-7 recent deals (2020-2025)
+         - At least 3-4 historical deals/exits
+         - At least 2-3 interviews or strategy articles
+         - Database profiles (VCCircle, Tracxn, etc.)
     `;
 
     const schema = {
@@ -66,7 +127,6 @@ class NewsAgent {
       required: ["urls"]
     };
 
-    console.log("   📝 Generating News URL List...");
     const result = await this.gemini.generateStructuredOutput(analysisPrompt, schema, null, []);
     
     console.log(`   ✅ News Insights: ${result.urls.length} relevant URLs found.`);

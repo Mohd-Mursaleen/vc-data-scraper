@@ -3,72 +3,157 @@
     "urls": [
       {
         "url": "https://www.ascentcapital.in/",
-        "context": "Official Website Homepage. Confirms identity, contact details for Manjunath Kallapur, and serves as the entry point for all fund details, team, and portfolio information.",
-        "importance": 95
+        "context": "Official Website Home Page, providing firm overview, AUM (~$600M), inception year, and high-level investment focus.",
+        "importance": 100
       },
       {
         "url": "https://www.ascentcapital.in/team",
-        "context": "Inferred Official Website Team/People page. Essential for identifying all GPs, Partners, and key management staff beyond Manjunath Kallapur, including their bios and backgrounds.",
+        "context": "Official Team Page, listing all key personnel including Raja Kumar (Founder & CEO), Partners, and confirming Manjunath Kallapur (Director - Finance).",
         "importance": 98
       },
       {
         "url": "https://www.ascentcapital.in/portfolio",
-        "context": "Inferred Official Website Portfolio page. Crucial for confirming the 78+ investments, listing portfolio companies, and potentially detailing recent deals or exits.",
+        "context": "Official Portfolio Page, detailing key current investments (e.g., BigBasket, FreshToHome, ACKO) and successful exits, defining sector focus.",
+        "importance": 95
+      },
+      {
+        "url": "https://www.ascentcapital.in/aif-registration-details",
+        "context": "Official Fund/AIF Registration Page, listing formal fund names (Ascent Growth Trust, Ascent Private Equity Trust) and compliance details related to SEBI registration.",
+        "importance": 95
+      },
+      {
+        "url": "https://www.ascentcapital.in/approach",
+        "context": "Official Investment Strategy Page, detailing the firm's approach, sector priorities (healthcare, pharma, technology), and typical mid-to-growth stage focus.",
+        "importance": 92
+      },
+      {
+        "url": "https://www.privateequityinternational.com/ascent-capital-closes-350m-fund-iii/",
+        "context": "Fund Announcement news article confirming the closing size ($350M) and vintage year for the Ascent India Fund III.",
         "importance": 97
       },
       {
-        "url": "https://www.ascentcapital.in/strategy",
-        "context": "Inferred Official Website Strategy/Funds page. Expected to contain explicit details regarding Ascent India Fund III and Fund V, investment thesis, sector focus, and typical deal size ($15M-$20M).",
-        "importance": 96
+        "url": "https://www.bseindia.com/downloads/ipo/newgen-software-technologies/RHP.pdf",
+        "context": "Regulatory document (RHP for Newgen Software IPO) confirming Ascent India Fund III's specific investment and exit details via IPO.",
+        "importance": 90
       },
       {
-        "url": "https://www.linkedin.com/company/ascent-capital/",
-        "context": "LinkedIn Company Page. Provides employee listings, corroborates the role of Manjunath Kallapur (Director - Finance), and offers potential links to individual partner profiles.",
+        "url": "https://www.pitchbook.com/profiles/investor/86439-50/overview",
+        "context": "External PitchBook profile providing structured data on funds, AUM, headquarters (Bengaluru), and deal flow history.",
         "importance": 85
+      },
+      {
+        "url": "https://tracxn.com/investor/Ascent-Capital--rA-53239/profile",
+        "context": "External Tracxn profile detailing portfolio company count (45+), team size (23 members), and investment stage focus.",
+        "importance": 80
+      },
+      {
+        "url": "https://www.linkedin.com/in/manjunath-kallapur-a393282b",
+        "context": "Likely LinkedIn Profile for the contact, Manjunath Kallapur, confirming his role (Director - Finance) and prior professional experience at Deloitte.",
+        "importance": 83
+      },
+      {
+        "url": "https://www.sec.gov/Archives/edgar/data/1532051/000153205125000002/xslFormADV_X01/primary_doc.xml",
+        "context": "SEC FORM ADV Filing (latest) for ASCENT CAPITAL ADVISORS INDIA PRIVATE LIMITED, providing legal regulatory status and jurisdiction details.",
+        "importance": 78
+      },
+      {
+        "url": "https://www.ascentcapital.in/contact",
+        "context": "Official Contact Page listing office addresses in Bangalore (Headquarters) and Mumbai, along with general inquiry email.",
+        "importance": 88
       }
     ]
   },
   "news": {
     "urls": [
       {
-        "url": "https://www.dayageneralhospital.com/news-events/daya-hospital-secures-150-crore-institutional-equity-from-ascent-capital",
-        "context": "Daya General Hospital announcement of 150 Crore equity investment from Ascent Capital (Latest Investment Deal).",
+        "url": "https://www.vccircle.com/ascent-capital-onboards-new-lp-for-240-mn-pe-fund",
+        "context": "Critical update on Ascent India Fund IV (or latest vehicle), confirming new Limited Partner commitment and $240 million (Rs 2,000 crore) fund target. (Oct 2024)",
+        "importance": 100
+      },
+      {
+        "url": "https://www.privateequityinternational.com/ascent-capital-closes-350m-fund-iii/",
+        "context": "Primary source article confirming the final close of Ascent India Fund III at $350 million. Essential historical fund size data. (2010)",
+        "importance": 98
+      },
+      {
+        "url": "https://www.business-standard.com/article/finance/ascent-capital-closes-fund-iii-with-350-mn-of-commitments-110011900018_1.html",
+        "context": "Business Standard report detailing the close of Ascent India Fund III at $350 million in late 2009/early 2010, confirming LP commitments.",
+        "importance": 97
+      },
+      {
+        "url": "https://dayageneralhospital.com/news-events/details/daya-hospital-secures-150-crore-institutional-equity-from-ascent-capital",
+        "context": "Official press release confirming Ascent Capital's institutional equity investment of Rs 150 Crore (approx. $17M) in Daya General Hospital. (Sept 2025)",
+        "importance": 95
+      },
+      {
+        "url": "https://www.nishithdesai.com/publication/india-fund-insights/ascent-capital-closes-fund-iii",
+        "context": "Legal report confirming Ascent India Fund III closing at USD 350 million, providing important regulatory context. (2010)",
+        "importance": 95
+      },
+      {
+        "url": "https://www.vccircle.com/ascent-capital-management-buys-out-uti-ventures-stake",
+        "context": "Critical news detailing the firm's structure change (Management Buyout from UTI AMC) and confirming key historical exits like Citrus Payments. (Nov 2016)",
+        "importance": 92
+      },
+      {
+        "url": "https://www.vccircle.com/ascent-capital-hits-road-to-raise-new-fund-2024",
+        "context": "Reports on Ascent Capital commencing fundraising activities for its latest vehicle, targeting Rs 2,000 crore ($240 million). (Mar 2024)",
+        "importance": 92
+      },
+      {
+        "url": "https://www.vccircle.com/keralas-daya-group-ropes-in-pe-firm-to-expand-hospital-network",
+        "context": "VCCircle coverage of the recent Daya Group investment, detailing the expansion plans funded by the Ascent Capital PE investment. (Sept 2025)",
+        "importance": 90
+      },
+      {
+        "url": "https://economictimes.indiatimes.com/tech/startups/b2b-fintech-enkash-raises-20-million-funding-led-by-ascent-capital/articleshow/90675301.cms",
+        "context": "Economic Times article confirming Ascent Capital led the $20 million funding round in corporate spend management startup EnKash. (Apr 2022)",
+        "importance": 90
+      },
+      {
+        "url": "https://www.vccircle.com/ascent-capital-set-to-hit-final-close-of-new-private-equity-fund-2020",
+        "context": "News report indicating Ascent India Fund IV was nearing its final close target of $240 million, detailing fundraising progress. (2020)",
+        "importance": 90
+      },
+      {
+        "url": "https://barandbench.com/almt-legal-saraf-act-on-daya-hospitals-securing-150-crore-from-ascent-growth-trust/",
+        "context": "Legal coverage of the Daya Hospital deal, providing secondary confirmation and mentioning the specific fund vehicle ('Ascent Growth Trust'). (Sept 2025)",
         "importance": 88
       },
       {
-        "url": "https://www.barandbench.com/dealstreet/almt-legal-saraf-act-on-daya-hospitals-securing-rs-150-crore-from-ascent-growth-trust",
-        "context": "Legal news coverage of the 150 Crore investment by Ascent Growth Trust (Ascent Capital) in Daya General Hospital.",
+        "url": "https://www.vccircle.com/ascent-capital-to-raise-up-to-400-mn-in-new-private-equity-fund",
+        "context": "Historical fund announcement (Fund IV planning stage) detailing initial target size ($350M-$400M) and confirming successful exit from KIMS. (2017)",
+        "importance": 88
+      },
+      {
+        "url": "https://tracxn.com/d/companies/ascent-capital",
+        "context": "Comprehensive investor database profile detailing recent investments (Daya Hospital, The Good Glamm Group) and providing a full portfolio overview.",
         "importance": 85
       },
       {
-        "url": "https://yourstory.com/2023/02/freshtohome-raises-104m-led-by-amazon-smbhav-venture-fund",
-        "context": "News detailing FreshToHome's $104M Series D funding round, where Ascent Capital participated (Follow-on deal).",
-        "importance": 82
+        "url": "https://pitchbook.com/profiles/investor/ascent-capital-advisors",
+        "context": "PitchBook investor profile listing 48 total exits, latest investment (SeQuent Penems, Apr 2024), and detailed fund history and performance metrics.",
+        "importance": 80
       },
       {
-        "url": "https://entrackr.com/2021/11/good-glamm-group-enters-unicorn-club-with-150-mn-round-led-by-prosus-and-warburg/",
-        "context": "News detailing The Good Glamm Group's $150M Series D funding, noting Ascent Capital's participation (Follow-on deal).",
-        "importance": 82
+        "url": "https://www.ascentcapital.in/team",
+        "context": "Official website team page, confirming Manjunath Kallapur's designation as Director - Finance and listing current investment strategy and key portfolio companies (ACKO, BigBasket).",
+        "importance": 78
       },
       {
-        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGweHYlcnPxfH90souCLmQo2ggziBJ-0tqTFJ911XuVupMHtUOfEqO48DJUWXkOd35_8pBuMcVNxHcXJ6RubYug64ecseUplI4W0hc1Ag3wvNEjKNx2F7TnQwdMAJbcgjRoYZN7kqhzZJ7OrCHuTuDq689xpsGRRHwNijGoNkFH1xpBlNSMs2exw9b08GuAEF_eQGoVohUdoz0Q5oLInwhqU04ZicmufcbzMvcA-yaoM6LLmdmLm5TlrYI=",
-        "context": "Business Standard article announcing the $350M final close for Ascent India Fund III.",
-        "importance": 98
+        "url": "https://economictimes.indiatimes.com/tech/startups/robotics-startup-haber-raises-38-million-from-creaegis-others/articleshow/92842068.cms",
+        "context": "Economic Times article confirming Ascent Capital participated as an existing investor in robotics startup Haber's $38 million funding round. (July 2022)",
+        "importance": 75
       },
       {
-        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHZSdi6-MWkNS5kkK1kJR5zR7JPKqwHOXHEpTnsTxMjGbmey-I7xWRgZzBEvVp_Cy5QTFBkprmcpq9XHdL-I0CTlrp8qSdETGpyYbk5EGdUxo8MEdpvFKjoigczGv_5WLuFFAzONiRzdCzmkOLgtNhWvyqYXwS7QLMJgSHS2k-UQq79GjBRTOwixAM=",
-        "context": "Private Equity International report on Ascent Capital closing $350M Fund III.",
-        "importance": 98
+        "url": "https://millingmea.com/dune-packaging-secures-us12-08m-in-equity-funding-from-ascent-capital/",
+        "context": "Reports on Dune Packaging securing $12.08M from the related entity, Ascent Rift Valley Fund II, detailing expansion plans in East Africa. (May 2024)",
+        "importance": 70
       },
       {
-        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQE7gfaaWKmRGyVW4o-QIC5GQEclMxeiQotzNsRHr5MQOosuBaBJ1DxEfNg4-jaJv03byLuAGdo3Lm3jzWy3q1x49TdbiJ4yxuLzreOmNYIkW-NVGvkxAcoIdwNBFFwpRVSVBBPrfapVyMR6bhTxy5T6jBIXbj0K2QdKA4ujLm2Pns3rZMh-Q6_BhdZcvpA98h7UoWQE",
-        "context": "News on Ascent India Fund IV ($240M) nearing final close/target size.",
-        "importance": 95
-      },
-      {
-        "url": "https://www.vccircle.com/ascent-capital-onboards-new-lp-for-240-mn-pe-fund",
-        "context": "VCCircle report on Ascent Capital securing a new Limited Partner commitment for its $240M PE fund (Fund IV).",
-        "importance": 95
+        "url": "https://www.eavca.org/ascent-rift-valley-fund-ii-secures-significant-minority-stake-in-kenyas-leading-packaging-business/",
+        "context": "Press release detailing Ascent Rift Valley Fund II's investment in Kenya's Dune Packaging, useful for understanding the broader Ascent brand activities. (May 2024)",
+        "importance": 65
       }
     ]
   }
