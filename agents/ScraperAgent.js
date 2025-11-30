@@ -3,7 +3,7 @@ const { chromium } = require('playwright');
 class ScraperAgent {
   constructor() {
     this.browser = null;
-    this.headless = false; // Set to true for production, false for debugging
+    this.headless = process.env.HEADLESS !== 'true'; // Default true, can override in .env
   }
 
   async init() {
@@ -39,8 +39,8 @@ class ScraperAgent {
       });
       statusCode = response.status();
 
-      // Fallback for timeout
     } catch (error) {
+      // Fallback for timeout
       if (error.message.includes('Timeout')) {
         console.log(`   ⚠️  Network idle timeout, falling back to domcontentloaded...`);
         try {
@@ -61,8 +61,12 @@ class ScraperAgent {
       }
     }
 
+    // Wait for content to render
     console.log(`   ⏳ Waiting for content to render...`);
     await page.waitForTimeout(2000);
+
+    // Dismiss cookie consents and modals
+    await this.dismissPopups(page);
 
     // Get final HTML
     const html = await page.content();
@@ -75,6 +79,75 @@ class ScraperAgent {
       statusCode,
       scrapedAt: new Date().toISOString()
     };
+  }
+
+  /**
+   * Dismiss common cookie consent popups and modals
+   * @param {Page} page - Playwright page object
+   */
+  async dismissPopups(page) {
+    try {
+      // Common cookie consent button selectors
+      const cookieSelectors = [
+        // Generic text-based
+        'button:has-text("Accept")',
+        'button:has-text("Accept All")',
+        'button:has-text("Accept Cookies")',
+        'button:has-text("I Accept")',
+        'button:has-text("Agree")',
+        'button:has-text("OK")',
+        'button:has-text("Got it")',
+        'button:has-text("Allow")',
+        'button:has-text("Allow All")',
+        'a:has-text("Accept")',
+        
+        // Common frameworks and IDs
+        '#onetrust-accept-btn-handler',
+        '#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll',
+        '#CybotCookiebotDialogBodyButtonAccept',
+        '.cookie-consent-accept',
+        '.accept-cookies',
+        '[data-testid="cookie-accept"]',
+        '[aria-label*="Accept"]',
+        '[id*="accept-cookie"]',
+        '[class*="cookie-accept"]',
+        
+        // Close buttons for modals
+        '[aria-label="Close"]',
+        '[aria-label="Dismiss"]',
+        'button:has-text("Close")',
+        'button:has-text("×")',
+        '.modal-close',
+        '.close-button',
+        '[class*="close"]'
+      ];
+
+      // Try clicking each selector (don't wait if not found)
+      for (const selector of cookieSelectors) {
+        try {
+          const element = await page.$(selector);
+          if (element && await element.isVisible()) {
+            await element.click({ timeout: 1000 });
+            console.log(`   ✓ Dismissed popup using: ${selector}`);
+            await page.waitForTimeout(500);
+            break; // Stop after first successful click
+          }
+        } catch (err) {
+          // Ignore errors, continue to next selector
+        }
+      }
+
+      // Also try pressing Escape key to close modals
+      try {
+        await page.keyboard.press('Escape');
+      } catch (err) {
+        // Ignore
+      }
+
+    } catch (error) {
+      // Don't fail scraping if popup dismissal fails
+      console.log(`   ⚠️  Could not dismiss popups: ${error.message}`);
+    }
   }
 
   makeErrorResult(url, errorMessage) {

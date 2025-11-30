@@ -5,6 +5,7 @@ const DiscoveryAgent = require('./agents/DiscoveryAgent');
 const NewsAgent = require('./agents/NewsAgent');
 const ScraperAgent = require('./agents/ScraperAgent');
 const CleanerAgent = require('./agents/CleanerAgent');
+const PageAnalyzer = require('./agents/PageAnalyzer');
 const LinkPrioritizationAgent = require('./agents/LinkPrioritizationAgent');
 const ApifyLinkedInScraper = require('./services/ApifyLinkedInScraper');
 const SynthesisAgent = require('./agents/SynthesisAgent');
@@ -23,6 +24,7 @@ class VCScraperPipeline {
     this.newsAgent = new NewsAgent(this.gemini);
     this.scraper = new ScraperAgent();
     this.cleaner = new CleanerAgent();
+    this.pageAnalyzer = new PageAnalyzer(this.gemini);
     this.prioritizer = new LinkPrioritizationAgent(this.gemini);
     this.linkedInScraper = new ApifyLinkedInScraper();
     this.synthesizer = new SynthesisAgent(this.gemini);
@@ -59,9 +61,9 @@ class VCScraperPipeline {
 
       this.storage.saveLinkedInQueue(firmSlug, linkedInUrls);
 
-      // PHASE 3: Scrape & Extract Regular URLs
-      console.log('\n🌐 PHASE 3: Scraping Regular Pages');
-      const plainTexts = [];
+      // PHASE 3: Scrape & Analyze Regular URLs
+      console.log('\n🌐 PHASE 3: Scraping & Analyzing Regular Pages');
+      const pageAnalyses = [];
 
       for (let i = 0; i < regularUrls.length; i++) {
         const urlObj = regularUrls[i];
@@ -78,14 +80,43 @@ class VCScraperPipeline {
 
         const cleaned = this.cleaner.execute(scraped.html, urlObj.url);
         
+        // Detect page type from URL
+        const pageType = this.detectPageType(urlObj.url, cleaned.title);
+        
+        // Analyze page with PageAnalyzer to extract structured facts
+        const analysis = await this.pageAnalyzer.analyze(
+          cleaned.plainText,
+          urlObj.url,
+          pageType
+        );
+
+        // Add firm context to analysis
+        analysis.firmName = firmRecord.Name;
+        analysis.pageId = pageId;
+        analysis.pageType = pageType;
+        analysis.url = urlObj.url;
+
+        // Save page HTML and analysis
         this.storage.savePage(firmSlug, pageId, scraped.html, cleaned);
         
-        plainTexts.push(cleaned.plainText);
+        // Save page analysis JSON
+        const analysisPath = path.join(
+          this.storage.getFirmDir(firmSlug),
+          'page_analyses',
+          `${pageId}_analysis.json`
+        );
+        fs.mkdirSync(path.dirname(analysisPath), { recursive: true });
+        fs.writeFileSync(analysisPath, JSON.stringify(analysis, null, 2));
+
+        // Collect for synthesis (only if relevant)
+        if (analysis.is_relevant) {
+          pageAnalyses.push(analysis);
+        }
 
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
-      console.log(`\n   ✅ Scraped ${plainTexts.length} pages successfully`);
+      console.log(`\n   ✅ Analyzed ${pageAnalyses.length} relevant pages (${regularUrls.length} total scraped)`);
 
       await this.scraper.close();
 
@@ -116,7 +147,12 @@ class VCScraperPipeline {
 
       const firmInfo = {
         contactPerson: firmRecord['Contact Person'],
-        registrationNo: firmRecord['Registration No.']
+        registrationNo: firmRecord['Registration No.'],
+        email: firmRecord['E-mail'],
+        address: firmRecord.Address,
+        validity: firmRecord.Validity,
+        // Extract location from address (simple extraction - takes first city mention)
+        location: this.extractLocation(firmRecord.Address)
       };
 
       const prioritizedLinkedIn = await this.prioritizer.execute(
@@ -169,10 +205,8 @@ class VCScraperPipeline {
 
       const knowledgeBase = {
         targetRecord: firmRecord,
-        discovery: discoveryResult,
-        websiteContent: plainTexts.join('\n\n--- PAGE BREAK ---\n\n'),
-        newsData: newsResult,
-        linkedInData: linkedInProfiles
+        pageAnalyses: pageAnalyses,  // Structured JSON facts from each page
+        linkedInData: linkedInProfiles  // Scraped LinkedIn profiles
       };
 
       const synthesizedData = await this.synthesizer.execute(knowledgeBase);
@@ -201,7 +235,7 @@ class VCScraperPipeline {
         stats: {
           regularUrls: regularUrls.length,
           linkedInUrls: allLinkedInUrls.length,
-          scrapedPages: plainTexts.length,
+          analyzedPages: pageAnalyses.length,
           linkedInProfiles: linkedInProfiles.length,
           duration: duration
         }
@@ -244,6 +278,75 @@ class VCScraperPipeline {
     console.log('='.repeat(80));
 
     return results;
+  }
+
+  /**
+   * Detect page type from URL and title for better PageAnalyzer context
+   */
+  detectPageType(url, title) {
+    const urlLower = url.toLowerCase();
+    const titleLower = (title || '').toLowerCase();
+
+    // Team/People pages
+    if (urlLower.includes('/team') || urlLower.includes('/people') || 
+        urlLower.includes('/about-us') || titleLower.includes('team')) {
+      return 'team';
+    }
+
+    // Portfolio pages
+    if (urlLower.includes('/portfolio') || urlLower.includes('/investments') ||
+        titleLower.includes('portfolio')) {
+      return 'portfolio';
+    }
+
+    // Fund/Strategy pages
+    if (urlLower.includes('/fund') || urlLower.includes('/strategy') ||
+        urlLower.includes('/approach') || titleLower.includes('fund')) {
+      return 'fund_info';
+    }
+
+    // Contact pages
+    if (urlLower.includes('/contact') || titleLower.includes('contact')) {
+      return 'contact_info';
+    }
+
+    // News/Press pages
+    if (urlLower.includes('/news') || urlLower.includes('/press') ||
+        urlLower.includes('/blog') || urlLower.includes('/article')) {
+      return 'news_deal';
+    }
+
+    // Default to general
+    return 'general';
+  }
+
+  /**
+   * Extract location/city from SEBI address field
+   * Simple extraction - looks for common Indian city patterns
+   */
+  extractLocation(address) {
+    if (!address) return null;
+
+    // Common Indian cities to look for
+    const cities = [
+      'MUMBAI', 'DELHI', 'BANGALORE', 'BENGALURU', 'HYDERABAD', 'CHENNAI', 
+      'KOLKATA', 'PUNE', 'AHMEDABAD', 'GURGAON', 'GURUGRAM', 'NOIDA',
+      'JAIPUR', 'SURAT', 'LUCKNOW', 'KANPUR', 'NAGPUR', 'INDORE',
+      'THANE', 'BHOPAL', 'VISAKHAPATNAM', 'PIMPRI', 'PATNA', 'VADODARA',
+      'GHAZIABAD', 'LUDHIANA', 'AGRA', 'NASHIK', 'FARIDABAD', 'MEERUT',
+      'RAJKOT', 'KALYAN', 'VASAI', 'VARANASI', 'SRINAGAR', 'AURANGABAD'
+    ];
+
+    const upperAddress = address.toUpperCase();
+    
+    for (const city of cities) {
+      if (upperAddress.includes(city)) {
+        // Return capitalized version
+        return city.charAt(0) + city.slice(1).toLowerCase();
+      }
+    }
+
+    return null;
   }
 }
 

@@ -103,42 +103,64 @@ class LinkPrioritizationAgent {
     const firmContext = this.buildFirmContext(firmName, firmInfo);
 
     const prompt = `
-You are analyzing discovered URLs for researching the VC firm "${firmName}".
+You are a VC Research Analyst analyzing LinkedIn URLs for comprehensive research on the Indian VC firm "${firmName}".
 
 ${firmContext}
 
-DISCOVERED LINKS:
+DISCOVERED LINKEDIN URLS:
 ${linkList}
 
-GOAL: Score each URL by importance (1-100) for VC research and categorize them.
+RESEARCH OBJECTIVE:
+We are building a complete intelligence profile for this VC firm. Your task is to prioritize which LinkedIn profiles will provide the most valuable data about:
+1. Investment team (GPs, Partners, Analysts, Associates)
+2. Portfolio companies and their founding teams
+3. Co-investors and ecosystem partners
+4. Fund history and performance indicators
+5. Investment strategy and sector focus
 
-SCORING GUIDELINES:
+PRIORITIZATION CRITERIA:
 
-**High Priority (90-100):**
-- LinkedIn profiles of GPs, Partners, Investment Team members
-- Official VC firm pages (team, portfolio, funds, strategy, about)
-- Recent deal announcements (2023-2025)
-- Fund closing announcements
-- Portfolio company websites (especially if mentioned in firm context)
+**CRITICAL (95-100):** 🔴 Must-scrape profiles
+- LinkedIn profiles explicitly matching the Contact Person name: "${firmInfo.contactPerson || 'N/A'}"
+- LinkedIn company page for "${firmName}" (exact or close match)
+- Managing Partners, General Partners, Founding Partners at this firm
+- Investment team members with titles: Partner, Principal, Director
+- Profiles that mention "${firmName}" in current position
 
-**Medium Priority (70-89):**
-- LinkedIn profiles of portfolio company founders/executives
-- News articles about investments/exits (2020-2022)
-- Industry database profiles (PitchBook, Crunchbase, Tracxn)
-- Older fund announcements
-- Press releases
+**HIGH PRIORITY (80-94):** ⭐ High-value profiles
+- Investment Analysts, Associates, or Vice Presidents at this firm
+- Portfolio company founders/CEOs (if company name matches known portfolio)
+- Senior team members with 3+ years at this firm
+- Alumni who were previously Partners/GPs at this firm
+- LinkedIn profiles with email domain matching firm domain
 
-**Low Priority (50-69):**
-- Historical news (pre-2020)
-- General press mentions
-- Tangentially related companies
-- Blog posts and interviews
+**MEDIUM PRIORITY (60-79):** ✅ Valuable but not critical
+- Junior investment team (Associates with <2 years)
+- Portfolio company C-suite executives (CFO, CTO, COO)
+- Advisors or Venture Partners to the firm
+- Co-investors frequently mentioned alongside this firm
+- Team members at portfolio companies (Series A+ funded)
 
-**Very Low Priority (<50):**
-- Unrelated companies or people
-- Generic pages (privacy policy, terms, careers)
-- Dead links or duplicates
-- Social media (Twitter, Facebook, Instagram)
+**LOW PRIORITY (40-59):** ⚠️ Limited value
+- Generic startup founders (no clear connection to firm)
+- Interns or temporary staff at the firm
+- Employees at portfolio companies (non-C-suite)
+- Consultants or service providers to the firm
+- LinkedIn profiles with vague or unclear affiliations
+
+**VERY LOW PRIORITY (<40):** ❌ Skip these
+- Profiles with no connection to VC firm or portfolio
+- Personal profiles unrelated to venture capital
+- Duplicate profiles (same person, different URL format)
+- Profiles from completely different sectors/geographies
+- Generic company pages (not VC-related)
+
+MATCHING GUIDELINES:
+- **Name Matching**: Pay special attention to "${firmInfo.contactPerson || ''}" and cross-reference with SEBI registration
+- **Location Matching**: Profiles based in or near "${firmInfo.location || firmInfo.headquarters || 'India'}"
+- **Email Domain**: Profiles with email containing firm name or domain
+- **Recency**: Prefer current positions over past positions
+- **Profile Completeness**: Well-maintained profiles with detailed experience > sparse profiles
 
 CATEGORIES:
 - linkedin_gp: LinkedIn profile of GP/Partner/Team member
@@ -209,31 +231,58 @@ Return a prioritized list with importance scores and categories.
   buildFirmContext(firmName, firmInfo) {
     const parts = [];
 
-    parts.push(`FIRM CONTEXT FOR "${firmName}":`);
+    parts.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    parts.push(`📋 SEBI REGISTERED FIRM CONTEXT FOR "${firmName}"`);
+    parts.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+
+    // Core SEBI Fields (always prioritize these)
+    if (firmInfo.registrationNo) {
+      parts.push(`🔖 SEBI Registration No: ${firmInfo.registrationNo}`);
+    }
 
     if (firmInfo.contactPerson) {
-      parts.push(`Contact Person: ${firmInfo.contactPerson}`);
+      parts.push(`👤 Official Contact Person: ${firmInfo.contactPerson}`);
+      parts.push(`   ⚠️  CRITICAL: Prioritize LinkedIn profiles matching this exact name`);
     }
 
-    if (firmInfo.registrationNo) {
-      parts.push(`SEBI Registration: ${firmInfo.registrationNo}`);
+    if (firmInfo.email) {
+      parts.push(`📧 Official Email: ${firmInfo.email}`);
+      const emailDomain = firmInfo.email.split('@')[1];
+      if (emailDomain) {
+        parts.push(`   🔍 Email Domain: ${emailDomain} (use for profile validation)`);
+      }
     }
 
+    if (firmInfo.location || firmInfo.headquarters) {
+      parts.push(`📍 Location: ${firmInfo.location || firmInfo.headquarters}`);
+    }
+
+    if (firmInfo.address) {
+      parts.push(`🏢 Registered Address: ${firmInfo.address}`);
+    }
+
+    if (firmInfo.validity) {
+      parts.push(`✅ SEBI Validity: ${firmInfo.validity}`);
+    }
+
+    // Additional Intelligence (if available from discovery)
     if (firmInfo.knownTeam && firmInfo.knownTeam.length > 0) {
-      parts.push(`\nKnown Team Members: ${firmInfo.knownTeam.join(', ')}`);
+      parts.push(`\n👥 Known Team Members: ${firmInfo.knownTeam.join(', ')}`);
     }
 
     if (firmInfo.knownPortfolio && firmInfo.knownPortfolio.length > 0) {
-      parts.push(`\nKnown Portfolio Companies: ${firmInfo.knownPortfolio.join(', ')}`);
+      parts.push(`\n💼 Known Portfolio Companies: ${firmInfo.knownPortfolio.join(', ')}`);
     }
 
     if (firmInfo.sectors && firmInfo.sectors.length > 0) {
-      parts.push(`\nFocus Sectors: ${firmInfo.sectors.join(', ')}`);
+      parts.push(`\n🎯 Focus Sectors: ${firmInfo.sectors.join(', ')}`);
     }
 
-    if (firmInfo.headquarters) {
-      parts.push(`\nHeadquarters: ${firmInfo.headquarters}`);
+    if (firmInfo.fundNames && firmInfo.fundNames.length > 0) {
+      parts.push(`\n💰 Known Funds: ${firmInfo.fundNames.join(', ')}`);
     }
+
+    parts.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
 
     return parts.join('\n');
   }
