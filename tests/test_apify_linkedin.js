@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const ApifyLinkedInScraper = require('./services/ApifyLinkedInScraper');
+const ApifyLinkedInScraper = require('../services/ApifyLinkedInScraper');
 require('dotenv').config();
 
 async function testApifyLinkedIn() {

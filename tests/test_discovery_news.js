@@ -1,6 +1,6 @@
-const GeminiService = require('./services/GeminiService');
-const DiscoveryAgent = require('./agents/DiscoveryAgent');
-const NewsAgent = require('./agents/NewsAgent');
+const GeminiService = require('../services/GeminiService');
+const DiscoveryAgent = require('../agents/DiscoveryAgent');
+const NewsAgent = require('../agents/NewsAgent');
 require('dotenv').config();
 
 async function testAgents() {

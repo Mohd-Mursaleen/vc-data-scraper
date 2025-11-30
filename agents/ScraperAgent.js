@@ -3,7 +3,7 @@ const { chromium } = require('playwright');
 class ScraperAgent {
   constructor() {
     this.browser = null;
-    this.headless = false;
+    this.headless = false; // Set to true for production, false for debugging
   }
 
   async init() {
@@ -15,6 +15,10 @@ class ScraperAgent {
     }
   }
 
+  /**
+   * Main execution method
+   * @param {string} url - URL to scrape
+   */
   async execute(url) {
     console.log(`   🌐 Scraping: ${url}`);
 
@@ -34,6 +38,8 @@ class ScraperAgent {
         timeout: 60000 
       });
       statusCode = response.status();
+
+      // Fallback for timeout
     } catch (error) {
       if (error.message.includes('Timeout')) {
         console.log(`   ⚠️  Network idle timeout, falling back to domcontentloaded...`);
@@ -46,34 +52,21 @@ class ScraperAgent {
         } catch (fallbackError) {
           console.log(`   ❌ Fallback failed: ${fallbackError.message}`);
           await context.close();
-          return {
-            url,
-            html: null,
-            statusCode: 0,
-            error: fallbackError.message,
-            scrapedAt: new Date().toISOString()
-          };
+          return this.makeErrorResult(url, fallbackError.message);
         }
       } else {
         console.log(`   ❌ Error: ${error.message}`);
         await context.close();
-        return {
-          url,
-          html: null,
-          statusCode: 0,
-          error: error.message,
-          scrapedAt: new Date().toISOString()
-        };
+        return this.makeErrorResult(url, error.message);
       }
     }
 
     console.log(`   ⏳ Waiting for content to render...`);
     await page.waitForTimeout(2000);
 
-    await this.clickDialogButtons(page);
-
+    // Get final HTML
     const html = await page.content();
-
+    
     await context.close();
 
     return {
@@ -84,28 +77,14 @@ class ScraperAgent {
     };
   }
 
-  async clickDialogButtons(page) {
-    const dialogSelectors = [
-      'button:has-text("Know More")',
-      'button:has-text("Read More")',
-      'a:has-text("Know More")',
-      'a:has-text("Read More")',
-      '[data-toggle="modal"]',
-      '.modal-trigger'
-    ];
-
-    for (const selector of dialogSelectors) {
-      const buttons = await page.locator(selector).all();
-      
-      if (buttons.length > 0) {
-        console.log(`   🖱️  Found ${buttons.length} "${selector}" buttons, clicking...`);
-        
-        for (const button of buttons) {
-          await button.click({ timeout: 1000 }).catch(() => {});
-          await page.waitForTimeout(500);
-        }
-      }
-    }
+  makeErrorResult(url, errorMessage) {
+    return {
+      url,
+      html: null,
+      statusCode: 0,
+      error: errorMessage,
+      scrapedAt: new Date().toISOString()
+    };
   }
 
   async close() {

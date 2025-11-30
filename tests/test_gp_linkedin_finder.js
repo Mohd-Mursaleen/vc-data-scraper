@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
-const GeminiService = require('./services/GeminiService');
-const GPLinkedInFinder = require('./agents/GPLinkedInFinder');
+const GeminiService = require('../services/GeminiService');
+const GPLinkedInFinder = require('../agents/GPLinkedInFinder');
 require('dotenv').config();
 
 async function findGPLinkedInProfiles() {

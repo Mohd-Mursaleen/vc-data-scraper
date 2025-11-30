@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
-const GeminiService = require('./services/GeminiService');
-const SynthesisAgent = require('./agents/SynthesisAgent');
+const GeminiService = require('../services/GeminiService');
+const SynthesisAgent = require('../agents/SynthesisAgent');
 require('dotenv').config();
 
 async function testSynthesis() {
