@@ -1,8 +1,8 @@
 const fs = require('fs');
-const ScraperAgent = require('./agents/ScraperAgent');
-const CleanerAgent = require('./agents/CleanerAgent');
-const StorageService = require('./services/StorageService');
-const URLClassifier = require('./utils/URLClassifier');
+const ScraperAgent = require('../agents/ScraperAgent');
+const CleanerAgent = require('../agents/CleanerAgent');
+const StorageService = require('../services/StorageService');
+const URLClassifier = require('../utils/URLClassifier');
 require('dotenv').config();
 
 async function runSmartScraper(researchOutputPath) {
