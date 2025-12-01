@@ -64,7 +64,13 @@ class GoogleSearchService {
     if (!this.apiKey || !this.searchEngineId) return [];
     try {
       const resp = await axios.get('https://www.googleapis.com/customsearch/v1', {
-        params: { key: this.apiKey, cx: this.searchEngineId, q: query, num }
+        params: { 
+          key: this.apiKey, 
+          cx: this.searchEngineId, 
+          q: query, 
+          num,
+          gl: 'in' // Set search location to India
+        }
       });
       return resp.data.items || [];
     } catch (e) {

@@ -1,48 +1,47 @@
+const GoogleSearchService = require('../services/GoogleSearchService');
+
 class DiscoveryAgent {
   constructor(geminiService) {
     this.gemini = geminiService;
+    this.googleSearch = new GoogleSearchService();
   }
 
   async execute(targetRecord) {
     console.log("\n🕵️  [Discovery Agent] Starting Enhanced Discovery...");
 
-    // Expanded Query Set for Maximum Coverage
+    // Use Google Search API for actual URLs
     const queries = [
-      `Official website for Indian VC firm "${targetRecord.Name}" (Contact: ${targetRecord['Contact Person']}, SEBI Registration: ${targetRecord['Registration No.']})`,
-      `LinkedIn page for Indian VC firm "${targetRecord.Name}" (Contact: ${targetRecord['Contact Person']})`,
-      `Pitchbook profile for Indian VC firm "${targetRecord.Name}" (Contact: ${targetRecord['Contact Person']})`
+      `"${targetRecord.Name}" official website`,
+      `"${targetRecord.Name}" LinkedIn company page`,
+      `"${targetRecord.Name}" VC fund India`,
+      `"${targetRecord.Name}" ${targetRecord['Contact Person']} SEBI`
     ];
 
-    console.log(`   🔎 Running ${queries.length} parallel searches...`);
-    queries.forEach(q => console.log(`      👉 Query: ${q}`));
+    console.log(`   🔎 Running ${queries.length} Google searches...`);
     
-    const searchResults = await Promise.all(queries.map(q => this.gemini.generateContent(q)));
-    const combinedContext = searchResults.join("\n\n=== NEXT SEARCH RESULT ===\n\n");
-
-    // Sanitize
-    const sanitizedContext = combinedContext.replace(/[^\x20-\x7E\n\r\t]/g, '');
-    console.log(`   📝 Search Context Length: ${sanitizedContext.length}`);
-
-    // Step 1: Use Google Search to find additional URLs beyond initial context
-    console.log("   🔍 Step 1: Searching for additional URLs with Google Search...");
-    const additionalSearchPrompt = `
-      Find ALL relevant URLs for the Indian VC firm "${targetRecord.Name}" (Contact: ${targetRecord['Contact Person']}, SEBI Reg: ${targetRecord['Registration No.']}).
+    let allResults = [];
+    for (const query of queries) {
+      console.log(`      👉 Query: ${query}`);
+      const results = await this.googleSearch.search(query, 5);
       
-      Look for:
-      - Official website and all its pages (team, portfolio, funds, strategy, about, contact)
-      - LinkedIn company page
-      - PitchBook/Tracxn profiles
-      - News articles about fund announcements, deals, exits
-      - Database listings
+      if (results && results.length > 0) {
+        console.log(`         Found ${results.length} results`);
+        allResults = allResults.concat(results.map(r => ({
+          title: r.title,
+          link: r.link,
+          snippet: r.snippet || ''
+        })));
+      }
       
-      Return the complete list of URLs with brief descriptions.
-    `;
-    
-    const additionalSearchResult = await this.gemini.generateContent(additionalSearchPrompt);
-    console.log(`   📝 Additional Search Result Length: ${additionalSearchResult.length}`);
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
 
-    // Combine all context
-    const fullContext = sanitizedContext + "\n\n=== ADDITIONAL SEARCH ===\n\n" + additionalSearchResult;
+    console.log(`   📝 Total search results: ${allResults.length}`);
+
+    // Format results for Gemini
+    const formattedResults = allResults.map((r, idx) => 
+      `[${idx + 1}] ${r.title}\nURL: ${r.link}\nSnippet: ${r.snippet}\n${'─'.repeat(80)}`
+    ).join('\n\n');
 
     // Step 2: Structured extraction WITHOUT tools
     console.log("   🧠 Step 2: Extracting and structuring URLs...");
@@ -58,39 +57,33 @@ class DiscoveryAgent {
       - Investment strategy, sector focus, typical cheque size
       - Contact information and office details
 
-      SEARCH CONTEXT (from initial search and additional search):
-      ${fullContext.substring(0, 40000)}
+      GOOGLE SEARCH RESULTS:
+      ${formattedResults}
 
       CRITICAL INSTRUCTIONS:
-      1. **Discover ALL relevant URLs** - both from the search context AND by inferring likely pages:
-         - Official website pages: homepage, /team, /portfolio, /funds, /strategy, /about, /contact
+      1. **Extract URLs from the search results above**:
+         - Official website (homepage and important pages like /team, /portfolio, /funds)
          - LinkedIn company page
          - PitchBook/Tracxn investor profiles
-         - News articles, press releases, interviews
-         - Database listings (VCCircle, Entrackr, YourStory, TechCrunch, Economic Times)
+         - News articles, press releases
+         - Database listings
       
-      2. **Prioritize CLEAN, DIRECT URLs**:
-         - Use actual website URLs (e.g., "https://www.ascentcapital.in/team")
-         - Avoid redirect URLs unless they're the only source
-         - For news sites, extract the actual article URL when possible
+      2. **Use EXACT URLs from the results** - copy them as they appear
       
-      3. **Infer likely pages** even if not explicitly mentioned:
-         - If you find "ascentcapital.in", also suggest "/team", "/portfolio", "/funds"
-         - These pages typically exist on VC firm websites
+      3. **Infer likely pages** if you find the main website:
+         - If you find "example.com", also suggest "example.com/team", "example.com/portfolio"
       
       4. **Provide detailed context** for each URL:
          - What specific data it contains
-         - Why it's valuable (e.g., "Contains Fund III $350M closing announcement")
+         - Why it's valuable
       
       5. **Assign importance scores (1-100)**:
-         - Official website & inferred pages: 90-100
+         - Official website & key pages: 90-100
          - LinkedIn company page: 80-90
          - PitchBook/Tracxn: 70-85
          - Fund announcements/deals: 85-98
          - Partner interviews: 70-80
          - General news mentions: 50-70
-         - Historical deals (pre-2020): 60-75
-         - Irrelevant URLs: 0-10
       
       6. **Be comprehensive**: Include 10-15 high-quality URLs covering all aspects.
     `;

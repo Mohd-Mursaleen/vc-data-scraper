@@ -1,6 +1,9 @@
+const GoogleSearchService = require('../services/GoogleSearchService');
+
 class NewsAgent {
   constructor(geminiService) {
     this.gemini = geminiService;
+    this.googleSearch = new GoogleSearchService();
   }
 
   async execute(targetRecord) {
@@ -10,45 +13,40 @@ class NewsAgent {
     console.log("\n📰 [News Agent] Gathering Enhanced Deal Intelligence...");
 
     const queries = [
-      `List recent investment news URLs for Indian VC firm "${firmName}" (Contact: ${contactPerson})`,
-      `Find fund size announcements for Indian VC firm "${firmName}" (Reg: ${regNo}) with source URLs`,
-      `New fund launch news for Indian VC firm "${firmName}" partner "${contactPerson}" with links`,
-      `Portfolio companies list for Indian VC firm "${firmName}" partner "${contactPerson}" with source links`,
-      `Partner interviews for Indian VC firm "${firmName}" partner "${contactPerson}" with URLs`,
-      `Latest deals 2024 2025 for Indian VC firm "${firmName}"  partner "${contactPerson}" with article links`,
-      `TechCrunch articles about Indian VC firm "${firmName}"  partner "${contactPerson}" with URLs`,
-      `Economic Times startup news for Indian VC firm "${firmName}"  partner "${contactPerson}" with links`
+      `"${firmName}" fund announcement India`,
+      `"${firmName}" investment news VCCircle`,
+      `"${firmName}" ${contactPerson} interview`,
+      `"${firmName}" portfolio companies funding`,
+      `"${firmName}" deals 2024 2025`,
+      `"${firmName}" VC India TechCrunch`,
+      `"${firmName}" Economic Times startup`
     ];
 
-    console.log(`   🔎 Searching News with ${queries.length} queries...`);
-    queries.forEach(q => console.log(`      👉 Query: ${q}`));
-
-    const searchResults = await Promise.all(queries.map(q => this.gemini.generateContent(q)));
-    const combinedContext = searchResults.join("\n\n=== NEXT SEARCH RESULT ===\n\n");
+    console.log(`   🔎 Running ${queries.length} Google searches...`);
     
-    // Sanitize
-    const sanitizedContext = combinedContext.replace(/[^\x20-\x7E\n\r\t]/g, '');
-
-    // Step 1: Use Google Search to find additional news URLs beyond initial context
-    console.log("   🔍 Step 1: Searching for additional news URLs with Google Search...");
-    const additionalSearchPrompt = `
-      Find ALL news articles, press releases, and database entries for the Indian VC firm "${firmName}" (Contact: ${contactPerson}, SEBI Reg: ${regNo}).
+    let allResults = [];
+    for (const query of queries) {
+      console.log(`      👉 Query: ${query}`);
+      const results = await this.googleSearch.search(query, 5);
       
-      Look for:
-      - Fund announcements (closings, sizes, launches) from 2015-2025
-      - Deal announcements (investments, exits) from 2015-2025
-      - Partner interviews and strategy articles
-      - Database profiles (VCCircle, Tracxn, PitchBook, Entrackr)
-      - Portfolio company funding rounds where this firm participated
+      if (results && results.length > 0) {
+        console.log(`         Found ${results.length} results`);
+        allResults = allResults.concat(results.map(r => ({
+          title: r.title,
+          link: r.link,
+          snippet: r.snippet || ''
+        })));
+      }
       
-      Return the complete list of URLs with what data each contains.
-    `;
-    
-    const additionalSearchResult = await this.gemini.generateContent(additionalSearchPrompt);
-    console.log(`   📝 Additional Search Result Length: ${additionalSearchResult.length}`);
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
 
-    // Combine all context
-    const fullContext = sanitizedContext + "\n\n=== ADDITIONAL SEARCH ===\n\n" + additionalSearchResult;
+    console.log(`   📝 Total news results: ${allResults.length}`);
+
+    // Format results for Gemini
+    const formattedResults = allResults.map((r, idx) => 
+      `[${idx + 1}] ${r.title}\nURL: ${r.link}\nSnippet: ${r.snippet}\n${'─'.repeat(80)}`
+    ).join('\n\n');
 
     // Step 2: Structured extraction WITHOUT tools
     console.log("   🧠 Step 2: Extracting and structuring news URLs...");
@@ -58,37 +56,26 @@ class NewsAgent {
 
       GOAL: Find ALL news articles, press releases, and database entries containing valuable data about this firm.
 
-      SEARCH CONTEXT (from initial search and additional search):
-      ${fullContext.substring(0, 40000)}
+      GOOGLE SEARCH RESULTS:
+      ${formattedResults}
 
       CRITICAL INSTRUCTIONS:
-      1. **Discover comprehensive news coverage** - both recent AND historical:
+      1. **Extract URLs from the search results** covering:
         - Fund announcements (closings, sizes, new fund launches): 2015-2025
          - Deal announcements (investments, exits): 2015-2025
          - Portfolio company funding rounds where this firm participated
          - Partner/GP interviews (insights on strategy, focus, performance)
          - Database profiles (VCCircle, Tracxn, PitchBook, Entrackr)
-         - Press releases from the firm or portfolio companies
-         - Award/recognition articles
+         - Press releases and award/recognition articles
       
-      2. **Prioritize CLEAN, DIRECT URLs**:
-         - Use actual article URLs (e.g., "https://www.vccircle.com/ascent-capital-closes-350m-fund")
-         - Extract real URLs from redirect links when possible
-         - For database sites, use the profile URL (e.g., "https://tracxn.com/d/companies/ascent-capital")
+      2. **Use EXACT URLs from the results** - copy them as they appear
       
-      3. **Look for SPECIFIC data points**:
-         - Fund III: $350M closing (verify year)
-         - Fund IV: $240M target/closing
-         - Recent deals: Daya General Hospital ($17M, 2025), EnKash ($20M), etc.
-         - Historical deals: BigBasket, FreshToHome, MyGlamm, KIMS, RBL Bank
-         - Partner quotes and strategy insights
-      
-      4. **Provide detailed context** for each URL:
+      3. **Provide detailed context** for each URL:
          - What specific information it contains (fund size, deal amount, partner name)
-         - Date/year if available
-         - Why it's valuable (e.g., "Confirms $350M Fund III final close in 2018")
+         - Date/year if available from the snippet
+         - Why it's valuable
       
-      5. **Assign importance scores (1-100)**:
+      4. **Assign importance scores (1-100)**:
          - Fund announcements (closings, sizes): 90-100
          - Major deal announcements (>$10M): 85-95
          - Partner interviews/strategy articles: 70-80
@@ -99,7 +86,7 @@ class NewsAgent {
          - General/vague mentions: 40-60
          - Irrelevant: 0-10
       
-      6. **Be comprehensive**: Include 15-20 high-quality URLs covering:
+      5. **Be comprehensive**: Include 15-20 high-quality URLs covering:
          - At least 2-3 fund announcements
          - At least 5-7 recent deals (2020-2025)
          - At least 3-4 historical deals/exits

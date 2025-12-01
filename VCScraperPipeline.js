@@ -9,6 +9,8 @@ const PageAnalyzer = require('./agents/PageAnalyzer');
 const LinkPrioritizationAgent = require('./agents/LinkPrioritizationAgent');
 const BrightDataLinkedInScraper = require('./services/BrightDataLinkedInScraper');
 const SynthesisAgent = require('./agents/SynthesisAgent');
+const GPEnrichmentAgent = require('./agents/GPEnrichmentAgent');
+const GPBackgroundEnhancementAgent = require('./agents/GPBackgroundEnhancementAgent');
 const StorageService = require('./services/StorageService');
 const URLClassifier = require('./utils/URLClassifier');
 require('dotenv').config();
@@ -28,6 +30,8 @@ class VCScraperPipeline {
     this.prioritizer = new LinkPrioritizationAgent(this.gemini);
     this.linkedInScraper = new BrightDataLinkedInScraper();
     this.synthesizer = new SynthesisAgent(this.gemini);
+    this.gpEnrichmentAgent = new GPEnrichmentAgent(this.gemini);
+    this.gpBackgroundEnhancer = new GPBackgroundEnhancementAgent(this.gemini);
     this.storage = new StorageService();
   }
 
@@ -253,6 +257,49 @@ class VCScraperPipeline {
       );
       fs.writeFileSync(finalOutputPath, JSON.stringify(synthesizedData, null, 2));
 
+      // PHASE 8: GP Enrichment (Targeted Search & Scrape)
+      console.log('\n🕵️  PHASE 8: GP Enrichment');
+      
+      let gpProfiles = [];
+      const identifiedGPs = synthesizedData.gps || [];
+      
+      if (identifiedGPs.length > 0 && process.env.BRIGHT_DATA_API_KEY) {
+        // Filter out GPs we already have profiles for
+        const existingNames = new Set(linkedInProfiles.map(p => p.name.toLowerCase()));
+        const targetGPs = identifiedGPs.filter(gp => {
+           // Simple check: if we don't have a profile with this name
+           return !existingNames.has(gp.toLowerCase());
+        });
+
+        if (targetGPs.length > 0) {
+          gpProfiles = await this.gpEnrichmentAgent.execute(targetGPs, firmRecord.Name);
+          
+          if (gpProfiles.length > 0) {
+             // Save GP profiles
+             const gpProfilesPath = path.join(
+              this.storage.getFirmDir(firmSlug),
+              'linkedin_gp_profiles.json'
+            );
+            fs.writeFileSync(gpProfilesPath, JSON.stringify(gpProfiles, null, 2));
+          }
+        } else {
+          console.log('   ✅ All identified GPs already have profiles.');
+        }
+      }
+
+      // PHASE 9: Enhance GP Backgrounds (if new profiles found)
+      if (gpProfiles.length > 0) {
+        console.log('\n✨ PHASE 9: Enhancing GP Backgrounds');
+        
+        // Use enhancement agent instead of full re-synthesis
+        const enhancedData = await this.gpBackgroundEnhancer.execute(synthesizedData, gpProfiles);
+        
+        // Overwrite final report with enhanced version
+        fs.writeFileSync(finalOutputPath, JSON.stringify(enhancedData, null, 2));
+        
+        console.log(`   ✅ Enhanced ${enhancedData.gp_backgrounds?.length || 0} GP background(s)`);
+      }
+
       const duration = ((Date.now() - startTime) / 1000 / 60).toFixed(2);
 
       console.log('\n' + '='.repeat(80));
@@ -272,7 +319,7 @@ class VCScraperPipeline {
           regularUrls: regularUrls.length,
           linkedInUrls: allLinkedInUrls.length,
           analyzedPages: pageAnalyses.length,
-          linkedInProfiles: linkedInProfiles.length,
+          linkedInProfiles: linkedInProfiles.length + gpProfiles.length,
           duration: duration
         }
       };

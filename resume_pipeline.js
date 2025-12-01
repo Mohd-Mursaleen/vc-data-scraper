@@ -2,6 +2,9 @@ const fs = require('fs');
 const path = require('path');
 const VCScraperPipeline = require('./VCScraperPipeline');
 const StorageService = require('./services/StorageService');
+const GPEnrichmentAgent = require('./agents/GPEnrichmentAgent');
+const GPBackgroundEnhancementAgent = require('./agents/GPBackgroundEnhancementAgent');
+const GeminiService = require('./services/GeminiService');
 require('dotenv').config();
 
 /**
@@ -13,6 +16,9 @@ class ResumePipeline {
   constructor() {
     this.pipeline = new VCScraperPipeline();
     this.storage = new StorageService();
+    this.gemini = new GeminiService();
+    this.gpEnrichmentAgent = new GPEnrichmentAgent(this.gemini);
+    this.gpBackgroundEnhancer = new GPBackgroundEnhancementAgent(this.gemini);
     this.inputFile = path.join(__dirname, 'inputs.json');
   }
 
@@ -154,11 +160,55 @@ class ResumePipeline {
       linkedInCompanyData: linkedInCompanies
     };
 
+    let synthesizedData = null;
+
     try {
-      const synthesizedData = await this.pipeline.synthesizer.execute(knowledgeBase);
+      synthesizedData = await this.pipeline.synthesizer.execute(knowledgeBase);
 
       const finalOutputPath = path.join(firmDir, 'final_report.json');
       fs.writeFileSync(finalOutputPath, JSON.stringify(synthesizedData, null, 2));
+
+      // PHASE 8: GP Enrichment (Targeted Search & Scrape)
+      console.log('\n🕵️  PHASE 8: GP Enrichment (RESUMED)');
+      
+      let gpProfiles = [];
+      // Check if we already have GP profiles
+      const gpProfilesPath = path.join(firmDir, 'linkedin_gp_profiles.json');
+      
+      if (fs.existsSync(gpProfilesPath)) {
+        gpProfiles = JSON.parse(fs.readFileSync(gpProfilesPath, 'utf-8'));
+        console.log(`   ✅ Found ${gpProfiles.length} existing GP profiles.`);
+      } else {
+        const identifiedGPs = synthesizedData.gps || [];
+        
+        if (identifiedGPs.length > 0 && process.env.BRIGHT_DATA_API_KEY) {
+          // Filter out GPs we already have profiles for
+          const existingNames = new Set(linkedInProfiles.map(p => p.name.toLowerCase()));
+          const targetGPs = identifiedGPs.filter(gp => !existingNames.has(gp.toLowerCase()));
+
+          if (targetGPs.length > 0) {
+            gpProfiles = await this.gpEnrichmentAgent.execute(targetGPs, firmRecord.Name);
+            
+            if (gpProfiles.length > 0) {
+               fs.writeFileSync(gpProfilesPath, JSON.stringify(gpProfiles, null, 2));
+            }
+          } else {
+            console.log('   ✅ All identified GPs already have profiles.');
+          }
+        }
+      }
+
+      // PHASE 9: Enhance GP Backgrounds (if new profiles found)
+      if (gpProfiles.length > 0) {
+        console.log('\n✨ PHASE 9: Enhancing GP Backgrounds');
+        
+        // Use enhancement agent instead of full re-synthesis
+        const enhancedData = await this.gpBackgroundEnhancer.execute(synthesizedData, gpProfiles);
+        
+        // Overwrite final report with enhanced version
+        fs.writeFileSync(finalOutputPath, JSON.stringify(enhancedData, null, 2));
+        console.log(`   ✅ Enhanced ${enhancedData.gp_backgrounds?.length || 0} GP background(s)`);
+      }
 
       console.log('\n' + '='.repeat(80));
       console.log('✅ RESUME COMPLETE');

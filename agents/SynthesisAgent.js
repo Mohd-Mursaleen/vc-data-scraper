@@ -11,7 +11,7 @@ class SynthesisAgent {
     console.log("\n🧬 [Synthesis Agent] Compiling Final Intelligence Report...");
 
     // Extract all data sources
-    const { targetRecord, pageAnalyses, linkedInData, linkedInCompanyData } = knowledgeBase;
+    const { targetRecord, pageAnalyses, linkedInData, linkedInCompanyData, gpProfileData } = knowledgeBase;
 
     // Build comprehensive SEBI context
     const sebiContext = this.buildSEBIContext(targetRecord);
@@ -20,6 +20,12 @@ class SynthesisAgent {
     const websiteContext = this.buildWebsiteContext(pageAnalyses);
     const linkedInContext = this.buildLinkedInContext(linkedInData);
     const linkedInCompanyContext = this.buildLinkedInCompanyContext(linkedInCompanyData);
+    
+    // Build GP Enrichment Context
+    let gpEnrichmentContext = '';
+    if (gpProfileData && gpProfileData.length > 0) {
+      gpEnrichmentContext = this.buildLinkedInContext(gpProfileData).replace('LINKEDIN PROFILES', 'ENRICHED GP PROFILES');
+    }
 
     const analysisPrompt = `
 You are a Senior VC Research Analyst synthesizing a comprehensive intelligence report for the Indian VC firm "${targetRecord.Name}".
@@ -37,6 +43,8 @@ ${websiteContext}
 
 ${linkedInContext}
 
+${gpEnrichmentContext}
+
 ${linkedInCompanyContext}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -51,7 +59,8 @@ DATA SOURCES:
    - Pre-categorized by type (fund_info, team_member, portfolio_company, etc.)
    - Each fact has a confidence score
 3. **LinkedIn Profiles**: Scraped professional profiles of team members and founders
-4. **LinkedIn Company Page**: Official firm description, size, and industry focus
+4. **Enriched GP Profiles**: Targeted deep-dive profiles of General Partners (Use this for detailed GP Backgrounds)
+5. **LinkedIn Company Page**: Official firm description, size, and industry focus
 
 CRITICAL RULES:
 1. **CROSS-VALIDATE**: Use SEBI context as the source of truth for firm name, contact person, registration number
