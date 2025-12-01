@@ -11,7 +11,7 @@ class SynthesisAgent {
     console.log("\n🧬 [Synthesis Agent] Compiling Final Intelligence Report...");
 
     // Extract all data sources
-    const { targetRecord, pageAnalyses, linkedInData } = knowledgeBase;
+    const { targetRecord, pageAnalyses, linkedInData, linkedInCompanyData } = knowledgeBase;
 
     // Build comprehensive SEBI context
     const sebiContext = this.buildSEBIContext(targetRecord);
@@ -19,6 +19,7 @@ class SynthesisAgent {
     // Build aggregated data context
     const websiteContext = this.buildWebsiteContext(pageAnalyses);
     const linkedInContext = this.buildLinkedInContext(linkedInData);
+    const linkedInCompanyContext = this.buildLinkedInCompanyContext(linkedInCompanyData);
 
     const analysisPrompt = `
 You are a Senior VC Research Analyst synthesizing a comprehensive intelligence report for the Indian VC firm "${targetRecord.Name}".
@@ -36,6 +37,8 @@ ${websiteContext}
 
 ${linkedInContext}
 
+${linkedInCompanyContext}
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎯 SYNTHESIS OBJECTIVES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -48,6 +51,7 @@ DATA SOURCES:
    - Pre-categorized by type (fund_info, team_member, portfolio_company, etc.)
    - Each fact has a confidence score
 3. **LinkedIn Profiles**: Scraped professional profiles of team members and founders
+4. **LinkedIn Company Page**: Official firm description, size, and industry focus
 
 CRITICAL RULES:
 1. **CROSS-VALIDATE**: Use SEBI context as the source of truth for firm name, contact person, registration number
@@ -56,6 +60,7 @@ CRITICAL RULES:
    - For fund sizes: prefer website facts > LinkedIn mentions
    - For dates: prefer specific dates over year-only mentions
    - For team members: Combine website facts with LinkedIn backgrounds
+   - For firm stats (size, founded): Combine website facts with LinkedIn Company Page data
 4. **AGGREGATE**: Combine portfolio companies from all website facts
 5. **VERIFY**: Cross-reference claims across sources before including them
 6. **NO HALLUCINATIONS**: Only include data explicitly found in the sources above
@@ -263,12 +268,61 @@ QUALITY CHECKS:
 
   buildLinkedInContext(linkedInData) {
     if (!linkedInData || linkedInData.length === 0) {
-      return 'LINKEDIN: No profiles scraped.';
+      return 'LINKEDIN PROFILES: No profiles scraped.';
     }
     const profiles = linkedInData.slice(0, 5).map(p => 
       `- ${p.name || 'Unknown'}: ${p.headline || 'N/A'} (${p.url || ''})`
     ).join('\n');
     return `LINKEDIN PROFILES (${linkedInData.length} scraped):\n${profiles}\n...`;
+  }
+
+  buildLinkedInCompanyContext(linkedInCompanyData) {
+    if (!linkedInCompanyData || linkedInCompanyData.length === 0) {
+      return 'LINKEDIN COMPANY PAGES: No company pages scraped.';
+    }
+
+    const parts = [`LINKEDIN COMPANY PAGES (${linkedInCompanyData.length} scraped):\n`];
+
+    linkedInCompanyData.forEach(company => {
+      const raw = company.raw || {};
+      
+      parts.push(`🏢 Company: ${company.name}`);
+      parts.push(`   Tagline: ${raw.tagline || 'N/A'}`);
+      parts.push(`   URL: ${company.url}`);
+      parts.push(`   Description: ${company.description || raw.about || 'N/A'}`);
+      parts.push(`   Industry: ${company.industry || raw.industry || 'N/A'}`);
+      
+      // Employee counts
+      parts.push(`   Employees (LinkedIn): ${raw.employees_in_linkedin || 'N/A'}`);
+      parts.push(`   Company Size Range: ${company.companySize || raw.company_size || 'N/A'}`);
+      
+      parts.push(`   Founded: ${company.founded || raw.founded_year || 'N/A'}`);
+      parts.push(`   Headquarters: ${company.headquarters || raw.location || 'N/A'}`);
+      parts.push(`   Website: ${company.website || raw.website || 'N/A'}`);
+      
+      // Specialties
+      if (company.specialties && company.specialties.length > 0) {
+        parts.push(`   Specialties: ${company.specialties.join(', ')}`);
+      }
+
+      // Locations (Detailed)
+      if (raw.locations && raw.locations.length > 0) {
+        const locs = raw.locations.map(l => 
+          `${l.city || ''}, ${l.country || ''} (${l.is_headquarter ? 'HQ' : 'Office'})`
+        ).filter(l => l.length > 5).join('; ');
+        parts.push(`   Office Locations: ${locs}`);
+      }
+
+      // Similar Companies (Potential Co-investors/Competitors)
+      if (raw.similar_companies && raw.similar_companies.length > 0) {
+        const similar = raw.similar_companies.map(s => s.name).join(', ');
+        parts.push(`   Similar Companies (Context): ${similar}`);
+      }
+
+      parts.push('');
+    });
+
+    return parts.join('\n');
   }
 }
 

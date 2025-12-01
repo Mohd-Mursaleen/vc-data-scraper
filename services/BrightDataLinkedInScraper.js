@@ -61,6 +61,71 @@ class BrightDataLinkedInScraper {
   }
 
   /**
+   * Scrape LinkedIn company profiles using Bright Data
+   * @param {Array<string>} urls - Array of LinkedIn company URLs
+   * @returns {Object} Scraped company data
+   */
+  async scrapeCompanies(urls) {
+    console.log(`🏢 Scraping ${urls.length} LinkedIn company page(s) via Bright Data...`);
+
+    try {
+      console.log(`   ⏳ Starting Bright Data company scraping job...`);
+      
+      const companies = await this.client.datasets.linkedin.collectCompanies(
+        urls.map(url => ({ url }))
+      );
+
+      const companyArray = Array.isArray(companies) ? companies : [companies];
+
+      if (!companyArray || companyArray.length === 0) {
+        console.log(`   ⚠️  No company data found in response`);
+        return {
+          success: false,
+          companies: [],
+          message: "No data returned from Bright Data",
+        };
+      }
+
+      console.log(`   ✅ Retrieved ${companyArray.length} company profile(s)`);
+
+      return {
+        success: true,
+        companies: companyArray,
+        totalCompanies: companyArray.length,
+      };
+    } catch (error) {
+      console.error(`   ❌ Bright Data company scraping failed:`, error.message);
+      return {
+        success: false,
+        companies: [],
+        message: error.message
+      };
+    }
+  }
+
+  /**
+   * Format company data for consistent response structure
+   * @param {Array} companies - Raw Bright Data company data
+   * @returns {Array} Formatted company data
+   */
+  formatCompanyProfiles(companies) {
+    return companies.map((company) => ({
+      url: company.url || company.linkedin_url,
+      name: company.name || company.company_name,
+      description: company.description || company.about,
+      website: company.website || company.company_website,
+      industry: company.industry,
+      companySize: company.company_size || company.employees_count,
+      headquarters: company.headquarters || company.location,
+      founded: company.founded || company.founded_year,
+      specialties: company.specialties,
+      followers: company.followers || company.followers_count,
+      logo: company.logo || company.profile_photo,
+      raw: company // Keep full raw data for reference
+    }));
+  }
+
+  /**
    * Format profile data for consistent response structure
    * @param {Array} profiles - Raw Bright Data profile data
    * @returns {Array} Formatted profile data

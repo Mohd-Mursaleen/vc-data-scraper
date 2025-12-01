@@ -171,36 +171,64 @@ class VCScraperPipeline {
 
       console.log(`   ✅ Prioritized: ${highValueLinkedIn.length} high-value profiles (score >= 60)`);
 
-      // PHASE 6: Scrape LinkedIn Profiles
-      console.log('\n👤 PHASE 6: Scraping LinkedIn Profiles');
+      // PHASE 6: Scrape LinkedIn Profiles & Companies
+      console.log('\n👤 PHASE 6: Scraping LinkedIn Profiles & Companies');
 
       let linkedInProfiles = [];
+      let linkedInCompanies = [];
 
       if (highValueLinkedIn.length > 0 && process.env.BRIGHT_DATA_API_KEY) {
-        const urls = highValueLinkedIn
+        // Split URLs into profiles and companies
+        const profileUrls = highValueLinkedIn
           .map(link => link.url)
           .filter(url => !url.includes('/company/') && !url.includes('/school/'));
+        
+        const companyUrls = highValueLinkedIn
+          .map(link => link.url)
+          .filter(url => url.includes('/company/') || url.includes('/school/'));
 
-        if (urls.length === 0) {
-          console.log('   ⚠️  No valid personal profiles to scrape (filtered out company/school pages)');
+        // 1. Scrape Personal Profiles
+        if (profileUrls.length > 0) {
+          const linkedInResult = await this.linkedInScraper.scrapeProfiles(profileUrls);
+
+          if (linkedInResult.success) {
+            linkedInProfiles = this.linkedInScraper.formatProfiles(linkedInResult.profiles);
+            
+            const profilesPath = path.join(
+              this.storage.getFirmDir(firmSlug),
+              'linkedin_scraped_profiles.json'
+            );
+            fs.writeFileSync(profilesPath, JSON.stringify(linkedInProfiles, null, 2));
+
+            console.log(`   ✅ Scraped ${linkedInProfiles.length} LinkedIn profiles`);
+          } else {
+            console.log(`   ⚠️  LinkedIn profile scraping failed: ${linkedInResult.message}`);
+          }
         } else {
+          console.log('   ⚠️  No valid personal profiles to scrape');
+        }
 
-        const linkedInResult = await this.linkedInScraper.scrapeProfiles(urls);
+        // 2. Scrape Company Pages
+        if (companyUrls.length > 0) {
+          const companyResult = await this.linkedInScraper.scrapeCompanies(companyUrls);
 
-        if (linkedInResult.success) {
-          linkedInProfiles = this.linkedInScraper.formatProfiles(linkedInResult.profiles);
-          
-          const profilesPath = path.join(
-            this.storage.getFirmDir(firmSlug),
-            'linkedin_scraped_profiles.json'
-          );
-          fs.writeFileSync(profilesPath, JSON.stringify(linkedInProfiles, null, 2));
+          if (companyResult.success) {
+            linkedInCompanies = this.linkedInScraper.formatCompanyProfiles(companyResult.companies);
+            
+            const companiesPath = path.join(
+              this.storage.getFirmDir(firmSlug),
+              'linkedin_scraped_companies.json'
+            );
+            fs.writeFileSync(companiesPath, JSON.stringify(linkedInCompanies, null, 2));
 
-          console.log(`   ✅ Scraped ${linkedInProfiles.length} LinkedIn profiles`);
+            console.log(`   ✅ Scraped ${linkedInCompanies.length} LinkedIn company pages`);
+          } else {
+            console.log(`   ⚠️  LinkedIn company scraping failed: ${companyResult.message}`);
+          }
         } else {
-          console.log(`   ⚠️  LinkedIn scraping failed: ${linkedInResult.message}`);
+          console.log('   ℹ️  No company pages to scrape');
         }
-        }
+
       } else if (!process.env.BRIGHT_DATA_API_KEY) {
         console.log(`   ⚠️  Skipping LinkedIn scraping (no BRIGHT_DATA_API_KEY)`);
       } else {
@@ -213,7 +241,8 @@ class VCScraperPipeline {
       const knowledgeBase = {
         targetRecord: firmRecord,
         pageAnalyses: pageAnalyses,  // Structured JSON facts from each page
-        linkedInData: linkedInProfiles  // Scraped LinkedIn profiles
+        linkedInData: linkedInProfiles,  // Scraped LinkedIn profiles
+        linkedInCompanyData: linkedInCompanies // Scraped LinkedIn company pages
       };
 
       const synthesizedData = await this.synthesizer.execute(knowledgeBase);

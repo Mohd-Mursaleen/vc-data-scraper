@@ -74,35 +74,72 @@ class ResumePipeline {
       console.log(`   ⚠️  No prioritized LinkedIn links found.`);
     }
 
-    // 3. Resume Phase 6: Scrape LinkedIn Profiles
-    console.log('\n👤 PHASE 6: Scraping LinkedIn Profiles (RESUMED)');
+    // 3. Resume Phase 6: Scrape LinkedIn Profiles & Companies
+    console.log('\n👤 PHASE 6: Scraping LinkedIn Profiles & Companies (RESUMED)');
     
     let linkedInProfiles = [];
+    let linkedInCompanies = [];
+    
     // Check if we already have profiles
     const profilesPath = path.join(firmDir, 'linkedin_scraped_profiles.json');
+    const companiesPath = path.join(firmDir, 'linkedin_scraped_companies.json');
     
+    // Load existing profiles if available
     if (fs.existsSync(profilesPath)) {
       linkedInProfiles = JSON.parse(fs.readFileSync(profilesPath, 'utf-8'));
-      console.log(`   ✅ Found ${linkedInProfiles.length} existing profiles. Skipping scrape.`);
-    } else if (highValueLinkedIn.length > 0 && process.env.BRIGHT_DATA_API_KEY) {
-      // Filter out company/school pages (FIX)
-      const urls = highValueLinkedIn
+      console.log(`   ✅ Found ${linkedInProfiles.length} existing profiles.`);
+    }
+
+    // Load existing companies if available
+    if (fs.existsSync(companiesPath)) {
+      linkedInCompanies = JSON.parse(fs.readFileSync(companiesPath, 'utf-8'));
+      console.log(`   ✅ Found ${linkedInCompanies.length} existing company pages.`);
+    }
+
+    if (highValueLinkedIn.length > 0 && process.env.BRIGHT_DATA_API_KEY) {
+      // Split URLs
+      const profileUrls = highValueLinkedIn
         .map(link => link.url)
         .filter(url => !url.includes('/company/') && !url.includes('/school/'));
+      
+      const companyUrls = highValueLinkedIn
+        .map(link => link.url)
+        .filter(url => url.includes('/company/') || url.includes('/school/'));
 
-      if (urls.length > 0) {
-        const linkedInResult = await this.pipeline.linkedInScraper.scrapeProfiles(urls);
+      // Scrape Profiles (if not already done)
+      if (linkedInProfiles.length === 0 && profileUrls.length > 0) {
+        const linkedInResult = await this.pipeline.linkedInScraper.scrapeProfiles(profileUrls);
 
         if (linkedInResult.success) {
           linkedInProfiles = this.pipeline.linkedInScraper.formatProfiles(linkedInResult.profiles);
           fs.writeFileSync(profilesPath, JSON.stringify(linkedInProfiles, null, 2));
           console.log(`   ✅ Scraped ${linkedInProfiles.length} LinkedIn profiles`);
         } else {
-          console.log(`   ⚠️  LinkedIn scraping failed: ${linkedInResult.message}`);
+          console.log(`   ⚠️  LinkedIn profile scraping failed: ${linkedInResult.message}`);
         }
+      } else if (linkedInProfiles.length > 0) {
+        // Already loaded above
       } else {
-        console.log('   ⚠️  No valid personal profiles to scrape (filtered out company/school pages)');
+        console.log('   ⚠️  No valid personal profiles to scrape');
       }
+
+      // Scrape Companies (if not already done)
+      if (linkedInCompanies.length === 0 && companyUrls.length > 0) {
+        const companyResult = await this.pipeline.linkedInScraper.scrapeCompanies(companyUrls);
+
+        if (companyResult.success) {
+          linkedInCompanies = this.pipeline.linkedInScraper.formatCompanyProfiles(companyResult.companies);
+          fs.writeFileSync(companiesPath, JSON.stringify(linkedInCompanies, null, 2));
+          console.log(`   ✅ Scraped ${linkedInCompanies.length} LinkedIn company pages`);
+        } else {
+          console.log(`   ⚠️  LinkedIn company scraping failed: ${companyResult.message}`);
+        }
+      } else if (linkedInCompanies.length > 0) {
+        // Already loaded above
+      } else {
+        console.log('   ℹ️  No company pages to scrape');
+      }
+
     } else {
       console.log(`   ⚠️  Skipping LinkedIn scraping (no key or no links)`);
     }
@@ -113,7 +150,8 @@ class ResumePipeline {
     const knowledgeBase = {
       targetRecord: firmRecord,
       pageAnalyses: pageAnalyses,
-      linkedInData: linkedInProfiles
+      linkedInData: linkedInProfiles,
+      linkedInCompanyData: linkedInCompanies
     };
 
     try {
