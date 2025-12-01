@@ -119,7 +119,8 @@ INSTRUCTIONS:
 
 QUALITY CHECKS:
 ✅ firm_name must exactly match: "${targetRecord.Name}"
-✅ All GPs must have full names (no abbreviations unless unavoidable)
+✅ gps array must contain objects with "name" and "background" fields
+✅ Each GP background should be 3-5 detailed sentences from LinkedIn data
 ✅ Fund sizes should include currency and year (e.g., "$100M (2020)")
 ✅ Dates should be as specific as possible (Year or Month Year)
 ✅ Portfolio companies should be deduplicated
@@ -145,12 +146,21 @@ QUALITY CHECKS:
         },
         gps: { 
           type: "array", 
-          items: { type: "string" },
-          description: "Full names and titles of General Partners and Partners"
-        },
-        gp_backgrounds: { 
-          type: "string",
-          description: "Brief career backgrounds of key GPs (education, previous roles, expertise)"
+          items: {
+            type: "object",
+            properties: {
+              name: {
+                type: "string",
+                description: "Full name and title of the GP (e.g., 'John Doe, Managing Partner')"
+              },
+              background: {
+                type: "string",
+                description: "Detailed 3-5 sentence professional background including education, previous roles, expertise, and notable achievements"
+              }
+            },
+            required: ["name", "background"]
+          },
+          description: "List of General Partners with their names and detailed backgrounds"
         },
         team_size: { 
           type: "string",
@@ -200,7 +210,7 @@ QUALITY CHECKS:
         }
       },
       required: [
-        "firm_name", "fund_names", "fund_sizes", "gps", "gp_backgrounds",
+        "firm_name", "fund_names", "fund_sizes", "gps",
         "team_size", "recent_funding_activity", "fund_start_date", "firm_start_date",
         "portfolio_companies", "past_performance", "industry_focus", "deal_velocity",
         "avg_cheque_size", "cheque_size_pct_round", "primary_coinvestors"

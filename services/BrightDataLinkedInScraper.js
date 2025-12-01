@@ -25,38 +25,58 @@ class BrightDataLinkedInScraper {
   async scrapeProfiles(urls) {
     console.log(`🔗 Scraping ${urls.length} LinkedIn profile(s) via Bright Data...`);
 
-    try {
-      console.log(`   ⏳ Starting Bright Data scraping job...`);
-      console.log(`   ℹ️  SDK handles triggering, polling, and downloading automatically`);
+    const maxRetries = 3;
+    let lastError;
 
-      // The SDK does everything in one call - triggers job, polls, and returns data!
-      // Note: collectProfiles returns the profile data directly, not a snapshot ID
-      const profiles = await this.client.datasets.linkedin.collectProfiles(
-        urls.map(url => ({ url }))
-      );
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        if (attempt > 1) {
+          const backoffTime = Math.pow(2, attempt - 1) * 1000; // Exponential backoff: 2s, 4s, 8s
+          console.log(`   🔄 Retry attempt ${attempt}/${maxRetries} (waiting ${backoffTime/1000}s)...`);
+          await new Promise(resolve => setTimeout(resolve, backoffTime));
+        }
 
-      // profiles is already the data (could be array or single object)
-      const profileArray = Array.isArray(profiles) ? profiles : [profiles];
+        console.log(`   ⏳ Starting Bright Data scraping job (attempt ${attempt}/${maxRetries})...`);
+        console.log(`   ℹ️  SDK handles triggering, polling, and downloading automatically`);
 
-      if (!profileArray || profileArray.length === 0) {
-        console.log(`   ⚠️  No profiles found in response`);
+        // The SDK does everything in one call - triggers job, polls, and returns data!
+        const profiles = await this.client.datasets.linkedin.collectProfiles(
+          urls.map(url => ({ url }))
+        );
+
+        // profiles is already the data (could be array or single object)
+        const profileArray = Array.isArray(profiles) ? profiles : [profiles];
+
+        if (!profileArray || profileArray.length === 0) {
+          console.log(`   ⚠️  No profiles found in response`);
+          return {
+            success: false,
+            profiles: [],
+            message: "No data returned from Bright Data",
+          };
+        }
+
+        console.log(`   ✅ Retrieved ${profileArray.length} profile(s)`);
+
         return {
-          success: false,
-          profiles: [],
-          message: "No data returned from Bright Data",
+          success: true,
+          profiles: profileArray,
+          totalProfiles: profileArray.length,
         };
+      } catch (error) {
+        lastError = error;
+        console.error(`   ❌ Attempt ${attempt} failed:`, error.message);
+        
+        // Don't retry on final attempt
+        if (attempt === maxRetries) {
+          console.error(`   ❌ All ${maxRetries} attempts failed for profile scraping`);
+          return {
+            success: false,
+            profiles: [],
+            message: `Bright Data scraping failed after ${maxRetries} attempts: ${error.message}`
+          };
+        }
       }
-
-      console.log(`   ✅ Retrieved ${profileArray.length} profile(s)`);
-
-      return {
-        success: true,
-        profiles: profileArray,
-        totalProfiles: profileArray.length,
-      };
-    } catch (error) {
-      console.error(`   ❌ Bright Data scraping failed:`, error.message);
-      throw new Error(`Bright Data LinkedIn scraping failed: ${error.message}`);
     }
   }
 
@@ -68,38 +88,55 @@ class BrightDataLinkedInScraper {
   async scrapeCompanies(urls) {
     console.log(`🏢 Scraping ${urls.length} LinkedIn company page(s) via Bright Data...`);
 
-    try {
-      console.log(`   ⏳ Starting Bright Data company scraping job...`);
-      
-      const companies = await this.client.datasets.linkedin.collectCompanies(
-        urls.map(url => ({ url }))
-      );
+    const maxRetries = 3;
+    let lastError;
 
-      const companyArray = Array.isArray(companies) ? companies : [companies];
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        if (attempt > 1) {
+          const backoffTime = Math.pow(2, attempt - 1) * 1000; // Exponential backoff: 2s, 4s, 8s
+          console.log(`   🔄 Retry attempt ${attempt}/${maxRetries} (waiting ${backoffTime/1000}s)...`);
+          await new Promise(resolve => setTimeout(resolve, backoffTime));
+        }
 
-      if (!companyArray || companyArray.length === 0) {
-        console.log(`   ⚠️  No company data found in response`);
+        console.log(`   ⏳ Starting Bright Data company scraping job (attempt ${attempt}/${maxRetries})...`);
+        
+        const companies = await this.client.datasets.linkedin.collectCompanies(
+          urls.map(url => ({ url }))
+        );
+
+        const companyArray = Array.isArray(companies) ? companies : [companies];
+
+        if (!companyArray || companyArray.length === 0) {
+          console.log(`   ⚠️  No company data found in response`);
+          return {
+            success: false,
+            companies: [],
+            message: "No data returned from Bright Data",
+          };
+        }
+
+        console.log(`   ✅ Retrieved ${companyArray.length} company profile(s)`);
+
         return {
-          success: false,
-          companies: [],
-          message: "No data returned from Bright Data",
+          success: true,
+          companies: companyArray,
+          totalCompanies: companyArray.length,
         };
+      } catch (error) {
+        lastError = error;
+        console.error(`   ❌ Attempt ${attempt} failed:`, error.message);
+        
+        // Don't retry on final attempt
+        if (attempt === maxRetries) {
+          console.error(`   ❌ All ${maxRetries} attempts failed for company scraping`);
+          return {
+            success: false,
+            companies: [],
+            message: `Bright Data company scraping failed after ${maxRetries} attempts: ${error.message}`
+          };
+        }
       }
-
-      console.log(`   ✅ Retrieved ${companyArray.length} company profile(s)`);
-
-      return {
-        success: true,
-        companies: companyArray,
-        totalCompanies: companyArray.length,
-      };
-    } catch (error) {
-      console.error(`   ❌ Bright Data company scraping failed:`, error.message);
-      return {
-        success: false,
-        companies: [],
-        message: error.message
-      };
     }
   }
 

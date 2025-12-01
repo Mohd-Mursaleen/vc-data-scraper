@@ -87,7 +87,7 @@ class PageAnalyzer {
       - Type: ${pageType.toUpperCase()}
       
       PAGE CONTENT:
-      ${text.substring(0, 40000)}
+      ${text.substring(0, 30000)}
 
       GOAL:
       Extract **ALL** relevant information available on the page. Do not summarize or abbreviate. We want the full richness of the data.

@@ -10,7 +10,7 @@ const LinkPrioritizationAgent = require('./agents/LinkPrioritizationAgent');
 const BrightDataLinkedInScraper = require('./services/BrightDataLinkedInScraper');
 const SynthesisAgent = require('./agents/SynthesisAgent');
 const GPEnrichmentAgent = require('./agents/GPEnrichmentAgent');
-const GPBackgroundEnhancementAgent = require('./agents/GPBackgroundEnhancementAgent');
+const GPDiscoveryService = require('./services/GPDiscoveryService');
 const StorageService = require('./services/StorageService');
 const URLClassifier = require('./utils/URLClassifier');
 require('dotenv').config();
@@ -30,8 +30,8 @@ class VCScraperPipeline {
     this.prioritizer = new LinkPrioritizationAgent(this.gemini);
     this.linkedInScraper = new BrightDataLinkedInScraper();
     this.synthesizer = new SynthesisAgent(this.gemini);
+    this.gpDiscovery = new GPDiscoveryService();
     this.gpEnrichmentAgent = new GPEnrichmentAgent(this.gemini);
-    this.gpBackgroundEnhancer = new GPBackgroundEnhancementAgent(this.gemini);
     this.storage = new StorageService();
   }
 
@@ -117,7 +117,7 @@ class VCScraperPipeline {
           pageAnalyses.push(analysis);
         }
 
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
 
       console.log(`\n   ✅ Analyzed ${pageAnalyses.length} relevant pages (${regularUrls.length} total scraped)`);
@@ -191,47 +191,61 @@ class VCScraperPipeline {
           .map(link => link.url)
           .filter(url => url.includes('/company/') || url.includes('/school/'));
 
-        // 1. Scrape Personal Profiles
+        console.log(`   👤 Profiles to scrape: ${profileUrls.length}`);
+        console.log(`   🏢 Companies to scrape: ${companyUrls.length}`);
+
+        // Scrape profiles and companies in PARALLEL
+        const scrapePromises = [];
+        
         if (profileUrls.length > 0) {
-          const linkedInResult = await this.linkedInScraper.scrapeProfiles(profileUrls);
-
-          if (linkedInResult.success) {
-            linkedInProfiles = this.linkedInScraper.formatProfiles(linkedInResult.profiles);
-            
-            const profilesPath = path.join(
-              this.storage.getFirmDir(firmSlug),
-              'linkedin_scraped_profiles.json'
-            );
-            fs.writeFileSync(profilesPath, JSON.stringify(linkedInProfiles, null, 2));
-
-            console.log(`   ✅ Scraped ${linkedInProfiles.length} LinkedIn profiles`);
-          } else {
-            console.log(`   ⚠️  LinkedIn profile scraping failed: ${linkedInResult.message}`);
-          }
-        } else {
-          console.log('   ⚠️  No valid personal profiles to scrape');
+          scrapePromises.push(
+            this.linkedInScraper.scrapeProfiles(profileUrls)
+              .then(result => ({ type: 'profiles', result }))
+          );
         }
-
-        // 2. Scrape Company Pages
+        
         if (companyUrls.length > 0) {
-          const companyResult = await this.linkedInScraper.scrapeCompanies(companyUrls);
-
-          if (companyResult.success) {
-            linkedInCompanies = this.linkedInScraper.formatCompanyProfiles(companyResult.companies);
-            
-            const companiesPath = path.join(
-              this.storage.getFirmDir(firmSlug),
-              'linkedin_scraped_companies.json'
-            );
-            fs.writeFileSync(companiesPath, JSON.stringify(linkedInCompanies, null, 2));
-
-            console.log(`   ✅ Scraped ${linkedInCompanies.length} LinkedIn company pages`);
-          } else {
-            console.log(`   ⚠️  LinkedIn company scraping failed: ${companyResult.message}`);
-          }
-        } else {
-          console.log('   ℹ️  No company pages to scrape');
+          scrapePromises.push(
+            this.linkedInScraper.scrapeCompanies(companyUrls)
+              .then(result => ({ type: 'companies', result }))
+          );
         }
+
+        // Wait for both to complete
+        const results = await Promise.all(scrapePromises);
+
+        // Process results
+        results.forEach(({ type, result }) => {
+          if (type === 'profiles') {
+            if (result.success) {
+              linkedInProfiles = this.linkedInScraper.formatProfiles(result.profiles);
+              
+              const profilesPath = path.join(
+                this.storage.getFirmDir(firmSlug),
+                'linkedin_scraped_profiles.json'
+              );
+              fs.writeFileSync(profilesPath, JSON.stringify(linkedInProfiles, null, 2));
+
+              console.log(`   ✅ Scraped ${linkedInProfiles.length} LinkedIn profiles`);
+            } else {
+              console.log(`   ⚠️  LinkedIn profile scraping failed: ${result.message}`);
+            }
+          } else if (type === 'companies') {
+            if (result.success) {
+              linkedInCompanies = this.linkedInScraper.formatCompanyProfiles(result.companies);
+              
+              const companiesPath = path.join(
+                this.storage.getFirmDir(firmSlug),
+                'linkedin_scraped_companies.json'
+              );
+              fs.writeFileSync(companiesPath, JSON.stringify(linkedInCompanies, null, 2));
+
+              console.log(`   ✅ Scraped ${linkedInCompanies.length} LinkedIn company pages`);
+            } else {
+              console.log(`   ⚠️  LinkedIn company scraping failed: ${result.message}`);
+            }
+          }
+        });
 
       } else if (!process.env.BRIGHT_DATA_API_KEY) {
         console.log(`   ⚠️  Skipping LinkedIn scraping (no BRIGHT_DATA_API_KEY)`);
@@ -239,66 +253,102 @@ class VCScraperPipeline {
         console.log(`   ⚠️  No high-value LinkedIn profiles to scrape`);
       }
 
-      // PHASE 7: Synthesize Final Data
-      console.log('\n🧬 PHASE 7: Synthesizing Final Report');
+      // PHASE 7: GP Discovery & Enrichment
+      console.log('\n🕵️  PHASE 7: GP Discovery & Enrichment');
+      
+      // Discover GP names from available data (no synthesis needed)
+      const discoveredGPs = this.gpDiscovery.discoverGPs({
+        pageAnalyses,
+        linkedInProfiles,
+        targetRecord: firmRecord
+      });
+
+      // Validate GP names: filter out invalid/empty names
+      const gpNames = discoveredGPs.filter(name => {
+        if (!name || typeof name !== 'string') return false;
+        const trimmed = name.trim();
+        if (trimmed.length < 3) return false; // Too short
+        if (trimmed.length > 100) return false; // Suspiciously long
+        if (!/[a-zA-Z]/.test(trimmed)) return false; // Must contain letters
+        return true;
+      });
+
+      console.log(`   🔍 Discovered ${discoveredGPs.length} potential GPs`);
+      console.log(`   ✅ Validated ${gpNames.length} valid GP names`);
+
+      let gpProfiles = [];
+      if (gpNames.length > 0 && process.env.BRIGHT_DATA_API_KEY) {
+        // Filter out GPs we already have profiles for
+        // Defensive: filter out profiles without names to prevent crashes
+        const existingNames = new Set(
+          linkedInProfiles
+            .filter(p => p && p.name)  // Only profiles with names
+            .map(p => p.name.toLowerCase())
+        );
+        const targetGPs = gpNames.filter(gp => !existingNames.has(gp.toLowerCase()));
+
+        if (targetGPs.length > 0) {
+          console.log(`   🎯 Searching for ${targetGPs.length} new GPs...`);
+          gpProfiles = await this.gpEnrichmentAgent.execute(targetGPs, firmRecord.Name);
+          
+          if (gpProfiles.length > 0) {
+            const gpProfilesPath = path.join(
+              this.storage.getFirmDir(firmSlug),
+              'linkedin_gp_profiles.json'
+            );
+            fs.writeFileSync(gpProfilesPath, JSON.stringify(gpProfiles, null, 2));
+            console.log(`   ✅ Enriched ${gpProfiles.length} GP profiles`);
+          }
+        } else {
+          console.log('   ✅ All discovered GPs already have profiles.');
+        }
+      } else if (!process.env.BRIGHT_DATA_API_KEY) {
+        console.log('   ⚠️  Skipping GP enrichment (no BRIGHT_DATA_API_KEY)');
+      }
+
+      // PHASE 8: Single Comprehensive Synthesis (with ALL data including GPs)
+      console.log('\n🧬 PHASE 8: Synthesizing Final Report');
 
       const knowledgeBase = {
         targetRecord: firmRecord,
-        pageAnalyses: pageAnalyses,  // Structured JSON facts from each page
-        linkedInData: linkedInProfiles,  // Scraped LinkedIn profiles
-        linkedInCompanyData: linkedInCompanies // Scraped LinkedIn company pages
+        pageAnalyses: pageAnalyses,
+        linkedInData: [...linkedInProfiles, ...gpProfiles], // Include GP profiles
+        linkedInCompanyData: linkedInCompanies
       };
 
       const synthesizedData = await this.synthesizer.execute(knowledgeBase);
+
+      // Validate synthesis output
+      console.log('   🔍 Validating synthesis output...');
+      const validationErrors = [];
+
+      // Check required fields
+      if (!synthesizedData.firm_name || synthesizedData.firm_name.trim().length === 0) {
+        validationErrors.push('Missing or empty firm_name');
+      }
+      if (!Array.isArray(synthesizedData.fund_names)) {
+        validationErrors.push('fund_names is not an array');
+      }
+      if (!Array.isArray(synthesizedData.gps)) {
+        validationErrors.push('gps is not an array');
+      }
+      if (!Array.isArray(synthesizedData.portfolio_companies)) {
+        validationErrors.push('portfolio_companies is not an array');
+      }
+
+      // Warn about validation errors but don't fail
+      if (validationErrors.length > 0) {
+        console.log(`   ⚠️  Validation warnings: ${validationErrors.join(', ')}`);
+        console.log('   ℹ️  Proceeding with potentially incomplete data');
+      } else {
+        console.log('   ✅ Synthesis output validated');
+      }
 
       const finalOutputPath = path.join(
         this.storage.getFirmDir(firmSlug),
         'final_report.json'
       );
       fs.writeFileSync(finalOutputPath, JSON.stringify(synthesizedData, null, 2));
-
-      // PHASE 8: GP Enrichment (Targeted Search & Scrape)
-      console.log('\n🕵️  PHASE 8: GP Enrichment');
-      
-      let gpProfiles = [];
-      const identifiedGPs = synthesizedData.gps || [];
-      
-      if (identifiedGPs.length > 0 && process.env.BRIGHT_DATA_API_KEY) {
-        // Filter out GPs we already have profiles for
-        const existingNames = new Set(linkedInProfiles.map(p => p.name.toLowerCase()));
-        const targetGPs = identifiedGPs.filter(gp => {
-           // Simple check: if we don't have a profile with this name
-           return !existingNames.has(gp.toLowerCase());
-        });
-
-        if (targetGPs.length > 0) {
-          gpProfiles = await this.gpEnrichmentAgent.execute(targetGPs, firmRecord.Name);
-          
-          if (gpProfiles.length > 0) {
-             // Save GP profiles
-             const gpProfilesPath = path.join(
-              this.storage.getFirmDir(firmSlug),
-              'linkedin_gp_profiles.json'
-            );
-            fs.writeFileSync(gpProfilesPath, JSON.stringify(gpProfiles, null, 2));
-          }
-        } else {
-          console.log('   ✅ All identified GPs already have profiles.');
-        }
-      }
-
-      // PHASE 9: Enhance GP Backgrounds (if new profiles found)
-      if (gpProfiles.length > 0) {
-        console.log('\n✨ PHASE 9: Enhancing GP Backgrounds');
-        
-        // Use enhancement agent instead of full re-synthesis
-        const enhancedData = await this.gpBackgroundEnhancer.execute(synthesizedData, gpProfiles);
-        
-        // Overwrite final report with enhanced version
-        fs.writeFileSync(finalOutputPath, JSON.stringify(enhancedData, null, 2));
-        
-        console.log(`   ✅ Enhanced ${enhancedData.gp_backgrounds?.length || 0} GP background(s)`);
-      }
 
       const duration = ((Date.now() - startTime) / 1000 / 60).toFixed(2);
 

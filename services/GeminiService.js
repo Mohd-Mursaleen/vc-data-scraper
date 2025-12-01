@@ -29,14 +29,17 @@ class GeminiService {
       } catch (error) {
         if (
           (error.message.includes("429") ||
+            error.message.includes("503") ||
             error.message.includes("Too Many Requests") ||
+            error.message.includes("Service Unavailable") ||
+            error.message.includes("overloaded") ||
             error.message.includes("Resource exhausted")) &&
           retries < maxRetries
         ) {
           retries++;
           const delay = initialDelay * Math.pow(2, retries - 1);
           console.log(
-            `⚠️  Gemini 429 Rate Limit hit. Retrying in ${delay}ms (Attempt ${retries}/${maxRetries})...`
+            `⚠️  Gemini API error (${error.status || 'unknown'}). Retrying in ${delay}ms (Attempt ${retries}/${maxRetries})...`
           );
           await new Promise((resolve) => setTimeout(resolve, delay));
         } else {
