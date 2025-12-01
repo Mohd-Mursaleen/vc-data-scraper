@@ -7,7 +7,7 @@ const ScraperAgent = require('./agents/ScraperAgent');
 const CleanerAgent = require('./agents/CleanerAgent');
 const PageAnalyzer = require('./agents/PageAnalyzer');
 const LinkPrioritizationAgent = require('./agents/LinkPrioritizationAgent');
-const ApifyLinkedInScraper = require('./services/ApifyLinkedInScraper');
+const BrightDataLinkedInScraper = require('./services/BrightDataLinkedInScraper');
 const SynthesisAgent = require('./agents/SynthesisAgent');
 const StorageService = require('./services/StorageService');
 const URLClassifier = require('./utils/URLClassifier');
@@ -26,7 +26,7 @@ class VCScraperPipeline {
     this.cleaner = new CleanerAgent();
     this.pageAnalyzer = new PageAnalyzer(this.gemini);
     this.prioritizer = new LinkPrioritizationAgent(this.gemini);
-    this.linkedInScraper = new ApifyLinkedInScraper();
+    this.linkedInScraper = new BrightDataLinkedInScraper();
     this.synthesizer = new SynthesisAgent(this.gemini);
     this.storage = new StorageService();
   }
@@ -176,8 +176,14 @@ class VCScraperPipeline {
 
       let linkedInProfiles = [];
 
-      if (highValueLinkedIn.length > 0 && process.env.APIFY_API_TOKEN) {
-        const urls = highValueLinkedIn.map(link => link.url);
+      if (highValueLinkedIn.length > 0 && process.env.BRIGHT_DATA_API_KEY) {
+        const urls = highValueLinkedIn
+          .map(link => link.url)
+          .filter(url => !url.includes('/company/') && !url.includes('/school/'));
+
+        if (urls.length === 0) {
+          console.log('   ⚠️  No valid personal profiles to scrape (filtered out company/school pages)');
+        } else {
 
         const linkedInResult = await this.linkedInScraper.scrapeProfiles(urls);
 
@@ -194,8 +200,9 @@ class VCScraperPipeline {
         } else {
           console.log(`   ⚠️  LinkedIn scraping failed: ${linkedInResult.message}`);
         }
-      } else if (!process.env.APIFY_API_TOKEN) {
-        console.log(`   ⚠️  Skipping LinkedIn scraping (no APIFY_API_TOKEN)`);
+        }
+      } else if (!process.env.BRIGHT_DATA_API_KEY) {
+        console.log(`   ⚠️  Skipping LinkedIn scraping (no BRIGHT_DATA_API_KEY)`);
       } else {
         console.log(`   ⚠️  No high-value LinkedIn profiles to scrape`);
       }

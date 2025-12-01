@@ -1,9 +1,9 @@
-const ApifyLinkedInScraper = require('../services/ApifyLinkedInScraper');
+const BrightDataLinkedInScraper = require('../services/BrightDataLinkedInScraper');
 
 class LinkedInAgent {
   constructor(geminiService) {
     this.gemini = geminiService;
-    this.apify = new ApifyLinkedInScraper();
+    this.brightData = new BrightDataLinkedInScraper();
   }
 
   async execute(gpNames, firmName) {
@@ -37,16 +37,16 @@ class LinkedInAgent {
       // 2. Try Apify Scrape
       let profileData = null;
       try {
-        console.log("   Attempting Apify scrape...");
-        const apifyResult = await this.apify.scrapeProfiles([profileUrl]);
-        if (apifyResult && apifyResult[0] && !apifyResult[0].error) {
-           profileData = apifyResult[0];
-           console.log("   ✅ Apify Success!");
+        console.log("   Attempting Bright Data scrape...");
+        const brightDataResult = await this.brightData.scrapeProfiles([profileUrl]);
+        if (brightDataResult && brightDataResult.success && brightDataResult.profiles[0]) {
+           profileData = this.brightData.formatProfiles(brightDataResult.profiles)[0];
+           console.log("   ✅ Bright Data Success!");
         } else {
-           throw new Error("Apify failed or returned empty");
+           throw new Error("Bright Data failed or returned empty");
         }
       } catch (e) {
-        console.log(`   ⚠️  Apify failed (${e.message}). Switching to Google Fallback...`);
+        console.log(`   ⚠️  Bright Data failed (${e.message}). Switching to Google Fallback...`);
         
         // 3. Fallback: Google Search for Bio
         // 3. Fallback: Google Search for Bio

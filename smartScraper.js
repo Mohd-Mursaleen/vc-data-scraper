@@ -4,7 +4,7 @@ require('dotenv').config();
 
 const GeminiService = require('./services/GeminiService');
 const WebsiteCrawler = require('./services/WebsiteCrawler');
-const ApifyLinkedInScraper = require('./services/ApifyLinkedInScraper');
+const BrightDataLinkedInScraper = require('./services/BrightDataLinkedInScraper');
 
 // --- Configuration ---
 const TARGET_RECORD = {
@@ -18,7 +18,7 @@ async function runPoC() {
 
   const gemini = new GeminiService();
   const crawler = new WebsiteCrawler({ headless: true });
-  const linkedinScraper = new ApifyLinkedInScraper();
+  const linkedinScraper = new BrightDataLinkedInScraper();
 
   try {
     // =================================================================
@@ -109,7 +109,7 @@ async function runPoC() {
     // =================================================================
     // PHASE 3: LINKEDIN DEEP DIVE (GP Backgrounds)
     // =================================================================
-    console.log("\n--- PHASE 3: LinkedIn Deep Dive (Apify) ---");
+    console.log("\n--- PHASE 3: LinkedIn Deep Dive (Bright Data) ---");
 
     // 1. Identify who to scrape. Priority: Contact Person from Record + Key People from Discovery
     const peopleToSearch = [TARGET_RECORD['Contact Person'], ...(discoveryData.key_people || [])];
@@ -133,7 +133,7 @@ async function runPoC() {
       
       if (profileResult.profile_url) {
         console.log(`      Found URL: ${profileResult.profile_url}`);
-        // Call Apify
+        // Call Bright Data
         try {
           const scrapeResult = await linkedinScraper.scrapeProfiles([profileResult.profile_url]);
           if (scrapeResult.success && scrapeResult.profiles.length > 0) {
